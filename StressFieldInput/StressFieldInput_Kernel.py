@@ -14,18 +14,29 @@ def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_
         # Characterize the mesh
         mesh_data = characterize_mesh()
         # Do not continue if there is no mesh
-        if mesh_data is not None:
-            # Build the jobs for the stress fields
-            jobs = create_jobs(default_job, mesh_data, stress_scale_counts,
-                               stress_scale_min, stress_scale_max, stress_script)
-            # Run the jobs
-            if run_jobs:
-                print(' > Running jobs')
-                for i in np.arange(0, len(jobs)):
-                    print(' -> Running job ' + str(i + 1) + ' of ' + str(len(jobs)))
-                    jobs[i].submit()
-                    jobs[i].waitForCompletion()
+        if mesh_data is None:
+            print_exit_message()
+            return
+        # Calculate the stresses
+        mesh_data = define_stresses(mesh_data, stress_script)
+        if mesh_data is None:
+            print_exit_message()
+            return
+        # Build the jobs for the stress fields
+        jobs = create_jobs(default_job, mesh_data, stress_scale_counts, stress_scale_min, stress_scale_max)
+        # Run the jobs
+        if run_jobs:
+            print(' > Running jobs')
+            for i in np.arange(0, len(jobs)):
+                print(' -> Running job ' + str(i + 1) + ' of ' + str(len(jobs)))
+                jobs[i].submit()
+                jobs[i].waitForCompletion()
     # Feedback message
+    print_exit_message()
+
+
+# Prints the end feedback message
+def print_exit_message():
     print('=== STRESS INPUT FINISHED ===')
 
 
@@ -144,8 +155,40 @@ def characterize_mesh():
     return mesh_data
 
 
+# Method to define the stress data
+def define_stresses(mesh_data, stress_script):
+    # Run the script to enable access to the calculate_stress() method at the current level
+    try:
+        execfile(stress_script, globals())  # Pass in globals() to load the script's contents to the global dictionary
+    except Exception:
+        # If it fails, return None
+        print('---> Stress script threw an error')
+        print(traceback.format_exc())
+        return None
+    # Iterate over the part instances
+    for part_index in np.arange(0, len(mesh_data)):
+        part_element_data = mesh_data[part_index]
+        if (part_element_data is None) or (len(part_element_data) <= 0):
+            continue
+        # Iterate over the mesh elements
+        for element_index in np.arange(0, len(part_element_data)):
+            # Fetch the element
+            element = part_element_data[element_index]
+            # Calculate the stress (method is defined in the stress script)
+            try:
+                stress = calculate_stress(element.get_part_name(), element.get_x(), element.get_y(), element.get_z())
+            except Exception:
+                # If stress script fails, default to zero
+                print('---> Stress script threw an error during calculation for element ' + element.get_label())
+                print(traceback.format_exc())
+                stress = [0, 0, 0, 0, 0, 0]
+            # Define the stress
+            element.define_stress(stress)
+    return mesh_data
+
+
 # Method to handle reading and writing of input files
-def create_jobs(default_job, mesh_data, stress_scale_counts, stress_scale_min, stress_scale_max, stress_script):
+def create_jobs(default_job, mesh_data, stress_scale_counts, stress_scale_min, stress_scale_max):
     # Feedback message
     print(' > Generating input files')
     # Fetch the job
@@ -166,9 +209,9 @@ def create_jobs(default_job, mesh_data, stress_scale_counts, stress_scale_min, s
             stress_scale = stress_scale_min + (i + 0.0)*(stress_scale_max - stress_scale_min)/(stress_scale_counts - 1)
         print(' ---> Creating job for stress factor ' + str(stress_scale))
         # Generate input file
-        input_file = inject_stress_field(mesh_data, stress_scale, default_input, line_index, predefined, stress_script)
+        input_file = inject_stress_field(mesh_data, stress_scale, default_input, line_index, predefined)
         # Generate the job
-        jobs[i] = abaqus.mdb.JobFromInputFile('Stress_Input_Scale_' + str(i), input_file)
+        jobs[i] = abaqus.mdb.JobFromInputFile(default_job + '_Stress_Input_Scale_' + str(i + 1), input_file)
     # Return the jobs
     return jobs
 
@@ -282,15 +325,7 @@ def find_stress_injection_line(default_input, next_line):
 
 
 # Method to inject a stress field in the input file and generate a job for it
-def inject_stress_field(mesh_data, stress_scale, default_input, inject_index, predefined_fields_present, stress_script):
-    # Run the script again
-    try:
-        execfile(stress_script, globals())  # Pass in globals() to load the script's contents to the global dictionary
-    except Exception:
-        # If it fails, return
-        print('---> Stress script threw an error')
-        print(traceback.format_exc())
-        return
+def inject_stress_field(mesh_data, stress_scale, default_input, inject_index, predefined_fields_present):
     # Create a copy of the default input
     lines = default_input
     # Put in the header for the predefined field
@@ -312,17 +347,11 @@ def inject_stress_field(mesh_data, stress_scale, default_input, inject_index, pr
         for element_index in np.arange(0, len(part_element_data)):
             # Fetch the element
             element = part_element_data[element_index]
-            # Calculate the stress (method is defined in the stress script)
-            try:
-                stress = calculate_stress(element.get_part_name(), element.get_x(), element.get_y(), element.get_z())
-            except Exception:
-                # If stress script fails, return
-                print('---> Stress script threw an error during calculation')
-                print(traceback.format_exc())
-                return
+            # Fetch the stress
+            stress = element.get_stress()
             # Scale the stress
             stress = stress_scale * stress
-            # Inject in the stress
+            # Inject in the input file
             line = element.get_instance_name() + '.' + element.get_set_name() + ','
             for stress_index in np.arange(0, len(stress)):
                 line = line + str(stress[stress_index]) + ','
