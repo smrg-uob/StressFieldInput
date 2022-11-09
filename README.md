@@ -6,7 +6,7 @@ The latest version can be downloaded from the [Releases](https://github.com/smrg
 To install, copy all the .py files to your Abaqus plugin directory.
 When done correctly, the plugin should appear in Abaqus CAE under the plugins item on the menu ribbon:
 
-![Plugin](https://github.com/smrg-uob/StressFieldInput/blob/master/doc/plugin.png)
+![Plugin](https://github.com/smrg-uob/StressFieldInput/blob/main/doc/plugin.png)
 
 
 ## Pre-Defined Fields
@@ -23,7 +23,7 @@ To resolve this, one way is the scale the initial stress field by an arbitrary f
 ## The plugin
 When launching the plugin from the menu bar, the following dialog window will show up:
 
-![User Interface](https://github.com/smrg-uob/StressFieldInput/blob/master/doc/gui_overview.png)
+![User Interface](https://github.com/smrg-uob/StressFieldInput/blob/main/doc/gui_overview.png)
 
 Its use is quite straightforward:
 * Default Job: Requires the selection of a default job to which the stress fields will be added (this job will not be overriden or changed)
@@ -37,7 +37,21 @@ Its use is quite straightforward:
 The arbitrary stress field is defined by a stress script which must be written and provided by the user.
 This script must contain a function:
 ```
+# Determines the stress at coordinates (x, y, z) in the given part
 def calculate_stress(part, x, y, z):
-  # Determines the stress at coordinates (x, y, z) in the given part
   # This must return a tuple of size 6 containing the stress components [S11, S22, S33, S12, S13, S23]
+  return [0, 0, 0, 0, 0, 0]
 ```
+
+## How it works
+In Abaqus input files, it is possible to define a predefined stress state for a set of elements, therefore, the plugin will identify all elements in the model's mesh , find its centre point, and create a set for each element.
+Then, the user defined stress script is called for each centre point, defining the stress state for that element.
+
+To apply these stresses, the plugin reads the input file of the default job, and injects these sets and their stress definitions into it.
+One such input file is written for each stress scale factor defined in the plugin dialog box, and jobs are made from the input files.
+If the run jobs option is checked, the plugin will also run these jobs in sequence.
+
+The plugin does not make any modifications to the MDB, except for creating new jobs based on the default job.
+
+## Acknowledgement
+Simon McKendrey for the idea of applying scale factors to the initial stresses.
