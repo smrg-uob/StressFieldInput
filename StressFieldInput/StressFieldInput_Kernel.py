@@ -159,7 +159,7 @@ def characterize_mesh(default_job):
                 # create and store a new mesh element data object
                 mesh_data[instance_index][element_index] = MeshElementData(instance_key, part_name, label, x, y, z)
     if no_mesh:
-        print('> No mesh present')
+        print('-> No mesh present, aborting')
         return None
     return mesh_data
 
