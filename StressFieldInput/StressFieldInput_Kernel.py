@@ -6,13 +6,12 @@ from MeshElementData import MeshElementData
 
 # Main method which runs the code
 def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_max, stress_script, run_jobs):
-    print("counts = " + str(stress_scale_counts) + " in [" + str(stress_scale_min) + ", " + str(stress_scale_max) + "]")
     # Feedback message
     print('=== STRESS INPUT START ===')
     # Run checks
     if run_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_max, stress_script):
         # Characterize the mesh
-        mesh_data = characterize_mesh()
+        mesh_data = characterize_mesh(default_job)
         # Do not continue if there is no mesh
         if mesh_data is None:
             print_exit_message()
@@ -68,6 +67,11 @@ def run_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_
     if default_job == '':
         print('-> No default job')
         return False
+    # Check if the default job has a model
+    job = abaqus.mdb.jobs[default_job]
+    if not hasattr(job, 'model'):
+        print('-> Invalid job, job does not have an associated model')
+        return False
     # Check if the default job is valid
     if default_job not in abaqus.mdb.jobs.keys():
         print(' -> Invalid default job')
@@ -93,7 +97,6 @@ def check_stress_script(stress_script):
         print('--> Stress script threw an error')
         print(traceback.format_exc())
         return False
-    print(str(dir))
     # Check now if the stress calculation method exists
     #if 'calculate_stress' not in dir():
     #    print('--> Function "calculate_stress" not defined in stress script')
@@ -108,12 +111,18 @@ def check_stress_script(stress_script):
 
 
 # Method to characterize the mesh
-def characterize_mesh():
+def characterize_mesh(default_job):
     # Feedback message
     print("> Characterizing mesh")
+    # Fetch the job
+    job = abaqus.mdb.jobs[default_job]
+    # Fetch the model from the job
+    model = job.model
+    if isinstance(model, basestring) or isinstance(model, str):
+        # Note that according to the documentation, model can be a Model object or a String with the model name
+        model = abaqus.mdb.models[model]
     # Fetch the instances in the assembly
-    model_keys = abaqus.mdb.models.keys()
-    instances = abaqus.mdb.models[model_keys[0]].rootAssembly.allInstances
+    instances = model.rootAssembly.allInstances
     instance_count = len(instances.keys())
     # Log element data for each of the instances
     no_mesh = True

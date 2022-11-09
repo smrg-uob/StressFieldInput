@@ -35,14 +35,20 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         aligner = abaqusGui.AFXVerticalAligner(p=frame_1_1)
         # Define the width of the input widgets
         widget_width = 12
-        # Add combo box to select the job
-        jobs = mdb.jobs.keys()
+        # Add combo box to select the job and populate it with valid jobs
+        job_names = mdb.jobs.keys()
         self.cbx_job = abaqusGui.AFXComboBox(p=aligner, ncols=widget_width, nvis=0, text='Default Job',
                                              tgt=self, sel=self.ID_JOB)
         index = 0
-        for job in jobs:
-            self.cbx_job.appendItem(text=job, sel=index)
-            index = index + 1
+        for job_name in job_names:
+            # Fetch the job
+            job = mdb.jobs[job_name]
+            if job is None:
+                continue
+            # Check if the job has a model
+            if hasattr(job, 'model'):
+                self.cbx_job.appendItem(text=job_name, sel=index)
+                index = index + 1
         # Text box for the number of stress value scales
         self.txt_scale_counts = abaqusGui.AFXTextField(p=aligner, ncols=widget_width, labelText='Scale Count',
                                                        tgt=form.kw_scale_counts, sel=0,
@@ -85,15 +91,6 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         if abaqusGui.SELID(sel) == self.ID_JOB:
             self.on_job_selected()
 
-    # getter for the current job
-    def get_selected_job(self):
-        count = self.cbx_job.getNumItems()
-        if count <= 0:
-            return None
-        else:
-            job_keys = mdb.jobs.keys()
-            return mdb.jobs[job_keys[self.currentJob]]
-
     # callback method for when the user selects a new slave
     def on_job_selected(self):
         # Get the index of the currently selected job
@@ -103,8 +100,8 @@ class PluginDialog(abaqusGui.AFXDataDialog):
             # Update the selected job
             self.currentJob = job_index
             # Update the job keyword value
-            job = self.get_selected_job()
-            self.form.kw_def_job.setValue(job.name)
+            job_name = self.cbx_job.getItemText(self.currentJob)
+            self.form.kw_def_job.setValue(job_name)
             # Update action button state
             self.update_action_button_state()
 
