@@ -93,6 +93,11 @@ class PluginDialog(abaqusGui.AFXDataDialog):
 
     # callback method for when the user selects a new slave
     def on_job_selected(self):
+        # If there are no jobs in the mdb, run default logic and return to avoid crashing
+        if len(mdb.jobs.keys()) <= 0:
+            self.currentJob = -1
+            self.update_action_button_state()
+            return
         # Get the index of the currently selected job
         job_index = self.cbx_job.getItemData(self.cbx_job.getCurrentItem())
         # If a different model has been selected, the GUI needs to be updated
