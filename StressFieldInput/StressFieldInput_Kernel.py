@@ -25,9 +25,9 @@ def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_
         jobs = create_jobs(default_job, mesh_data, stress_scale_counts, stress_scale_min, stress_scale_max)
         # Run the jobs
         if run_jobs:
-            print(' > Running jobs')
+            print('> Running jobs')
             for i in np.arange(0, len(jobs)):
-                print(' -> Running job ' + str(i + 1) + ' of ' + str(len(jobs)))
+                print('-> Running job ' + str(i + 1) + ' of ' + str(len(jobs)))
                 jobs[i].submit()
                 jobs[i].waitForCompletion()
     # Feedback message
@@ -74,7 +74,7 @@ def run_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_
         return False
     # Check if the default job is valid
     if default_job not in abaqus.mdb.jobs.keys():
-        print(' -> Invalid default job')
+        print('-> Invalid default job')
         return False
     # Attempt to run the stress script
     if not check_stress_script(stress_script):
@@ -199,7 +199,7 @@ def define_stresses(mesh_data, stress_script):
 # Method to handle reading and writing of input files
 def create_jobs(default_job, mesh_data, stress_scale_counts, stress_scale_min, stress_scale_max):
     # Feedback message
-    print(' > Generating input files')
+    print('> Generating input files')
     # Fetch the job
     job = abaqus.mdb.jobs[default_job]
     # Write the default input file
@@ -216,7 +216,7 @@ def create_jobs(default_job, mesh_data, stress_scale_counts, stress_scale_min, s
             stress_scale = stress_scale_min
         else:
             stress_scale = stress_scale_min + (i + 0.0)*(stress_scale_max - stress_scale_min)/(stress_scale_counts - 1)
-        print(' ---> Creating job for stress factor ' + str(stress_scale))
+        print('---> Creating job for stress factor ' + str(stress_scale))
         # Generate input file
         input_file = inject_stress_field(mesh_data, stress_scale, default_input, line_index, predefined)
         # Generate the job
@@ -243,7 +243,7 @@ def inject_element_sets(mesh_data, default_input):
             else:
                 continue
             # part definition reached, iterate over the remaining parts to inject
-            print(' -> Found input file part definition for ' + current_part)
+            print('-> Found input file part definition for ' + current_part)
             set_index = 0
             while set_index < len(sets_to_inject):
                 part_element_data = mesh_data[sets_to_inject[set_index]]
@@ -255,7 +255,7 @@ def inject_element_sets(mesh_data, default_input):
                     if part_element_data[0].get_part_name() == current_part:
                         # it is the current part in the input file, set as current part being injected
                         current_part_index = sets_to_inject[set_index]
-                        print(' --> Injecting sets for part ' + part_element_data[0].get_part_name())
+                        print('--> Injecting sets for part ' + part_element_data[0].get_part_name())
                         # also remove it from the parts to inject index list
                         sets_to_inject = np.delete(sets_to_inject, set_index)
                         # increment the current line as it will be '*Node'
@@ -265,7 +265,7 @@ def inject_element_sets(mesh_data, default_input):
                         # this is a different part, leave it in the list and move to the next index
                         set_index = set_index + 1
             if current_part_index < 0:
-                print(' --> Skipping ' + current_part)
+                print('--> Skipping ' + current_part)
         # current mode is set injection
         else:
             # if the line starts with a space, continue
@@ -279,7 +279,7 @@ def inject_element_sets(mesh_data, default_input):
                 # set injection point has been reached
                 else:
                     # Inject the element sets
-                    print(' --> Element set injection starts at line: ' + str(next_line))
+                    print('--> Element set injection starts at line: ' + str(next_line))
                     part_element_data = mesh_data[current_part_index]
                     # Decrement next line once
                     next_line = next_line - 1
@@ -329,7 +329,7 @@ def find_stress_injection_line(default_input, next_line):
             if line[0:4] == '** -':
                 inject_index = next_line - 1
                 break
-    print(' --> Stress field injection starts at line: ' + str(inject_index + 1))
+    print('--> Stress field injection starts at line: ' + str(inject_index + 1))
     return inject_index, predefined_fields_present
 
 
