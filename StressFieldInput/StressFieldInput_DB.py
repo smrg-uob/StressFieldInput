@@ -64,17 +64,30 @@ class PluginDialog(abaqusGui.AFXDataDialog):
                                                     tgt=form.kw_scale_max, sel=0,
                                                     opts=abaqusGui.AFXTEXTFIELD_INTEGER | abaqusGui.LAYOUT_CENTER_Y)
         self.txt_scale_max.setText('1')
-        # Button to select the stress script python file
+        # Widgets to load stress script
         self.lbl_stress_script = abaqusGui.FXLabel(p=frame_1_1, text='Stress Script')
-        file_handler = FileOpenDialog(form.kw_stress_script, '*.py')
-        frame_file_text = abaqusGui.FXHorizontalFrame(p=frame_1_1)
-        frame_file_text.setSelector(99)
-        self.txt_stress_script = abaqusGui.AFXTextField(p=frame_file_text, ncols=widget_width + 7, labelText='',
+        file_handler_stress = FileOpenDialog(form.kw_stress_script, '*.py')
+        frame_file_text_1 = abaqusGui.FXHorizontalFrame(p=frame_1_1)
+        frame_file_text_1.setSelector(99)
+        self.txt_stress_script = abaqusGui.AFXTextField(p=frame_file_text_1, ncols=widget_width + 7, labelText='',
                                                         tgt=form.kw_stress_script, sel=0,
-                               opts=abaqusGui.AFXTEXTFIELD_STRING | abaqusGui.LAYOUT_CENTER_Y)
+                                                        opts=abaqusGui.AFXTEXTFIELD_STRING | abaqusGui.LAYOUT_CENTER_Y)
         icon = abaqusGui.afxGetIcon('fileOpen', abaqusGui.AFX_ICON_SMALL)
-        abaqusGui.FXButton(p=frame_file_text, text='	Select File\nFrom Dialog', ic=icon, tgt=file_handler,
-                           sel=abaqusGui.AFXMode.ID_ACTIVATE,
+        abaqusGui.FXButton(p=frame_file_text_1, text='	Select Stress Script\nFrom Dialog', ic=icon,
+                           tgt=file_handler_stress, sel=abaqusGui.AFXMode.ID_ACTIVATE,
+                           opts=abaqusGui.BUTTON_NORMAL | abaqusGui.LAYOUT_CENTER_Y,
+                           x=0, y=0, w=0, h=0, pl=1, pr=1, pt=1, pb=1)
+        # Widgets to load error script
+        self.lbl_error_script = abaqusGui.FXLabel(p=frame_1_1, text='Error Script (optional)')
+        file_handler_error = FileOpenDialog(form.kw_error_script, '*.py')
+        frame_file_text_2 = abaqusGui.FXHorizontalFrame(p=frame_1_1)
+        frame_file_text_2.setSelector(99)
+        self.txt_error_script = abaqusGui.AFXTextField(p=frame_file_text_2, ncols=widget_width + 7, labelText='',
+                                                       tgt=form.kw_error_script, sel=0,
+                                                       opts=abaqusGui.AFXTEXTFIELD_STRING | abaqusGui.LAYOUT_CENTER_Y)
+        icon = abaqusGui.afxGetIcon('fileOpen', abaqusGui.AFX_ICON_SMALL)
+        abaqusGui.FXButton(p=frame_file_text_2, text='	Select Error Script\nFrom Dialog', ic=icon,
+                           tgt=file_handler_error, sel=abaqusGui.AFXMode.ID_ACTIVATE,
                            opts=abaqusGui.BUTTON_NORMAL | abaqusGui.LAYOUT_CENTER_Y,
                            x=0, y=0, w=0, h=0, pl=1, pr=1, pt=1, pb=1)
         # Check box to run the jobs

@@ -5,7 +5,8 @@ from MeshElementData import MeshElementData
 
 
 # Main method which runs the code
-def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_max, stress_script, run_jobs):
+def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_max,
+               stress_script, error_script, run_jobs):
     # Feedback message
     print('=== STRESS INPUT START ===')
     # Run checks
@@ -25,11 +26,8 @@ def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_
         jobs = create_jobs(default_job, mesh_data, stress_scale_counts, stress_scale_min, stress_scale_max)
         # Run the jobs
         if run_jobs:
-            print('> Running jobs')
-            for i in np.arange(0, len(jobs)):
-                print('-> Running job ' + str(i + 1) + ' of ' + str(len(jobs)))
-                jobs[i].submit()
-                jobs[i].waitForCompletion()
+            errors = execute_jobs(jobs, error_script)
+            print(errors)
     # Feedback message
     print_exit_message()
 
@@ -183,7 +181,7 @@ def define_stresses(mesh_data, stress_script):
         for element_index in np.arange(0, len(part_element_data)):
             # Fetch the element
             element = part_element_data[element_index]
-            # Calculate the stress (method is defined in the stress script)
+            # Calculate the stress (method will be available from the stress script)
             try:
                 stress = calculate_stress(element.get_part_name(), element.get_x(), element.get_y(), element.get_z())
             except Exception:
@@ -372,6 +370,45 @@ def inject_stress_field(mesh_data, stress_scale, default_input, inject_index, pr
         out.write(default_input[line_index] + '\n')
     out.close()
     return input_file_name
+
+
+# Method to run the jobs
+def execute_jobs(jobs, error_script):
+    # Run the jobs
+    print('> Running jobs')
+    for i in np.arange(0, len(jobs)):
+        print('-> Running job ' + str(i + 1) + ' of ' + str(len(jobs)))
+        jobs[i].submit()
+        jobs[i].waitForCompletion()
+    # Check if an error script exists
+    if error_script is None or error_script == '':
+        return []
+    # Run the script to enable access to the calculate_error() method at the current level
+    print('> Calculating Errors')
+    try:
+        execfile(error_script, globals())  # Pass in globals() to load the script's contents to the global dictionary
+    except Exception:
+        # If it fails, return
+        print('-> Error script threw an error')
+        print(traceback.format_exc())
+        return []
+    # Calculate the errors
+    errors = np.zeros(len(jobs))
+    for i in np.arange(0, len(jobs)):
+        # Feedback message
+        print('-> Calculating error for job ' + str(i + 1) + ' of ' + str(len(jobs)))
+        # open the ODB
+        odb = abaqus.openOdb(jobs[i].name + ".odb", readOnly=True)
+        # Calculate the error (method will be available from the error script)
+        try:
+            errors[i] = calculate_error(odb)
+        except Exception:
+            # If an error script fails, return
+            print('---> Error script threw an error during calculation')
+            print(traceback.format_exc())
+            return []
+    # Return the errors
+    return errors
 
 
 # utility method to read lines from file

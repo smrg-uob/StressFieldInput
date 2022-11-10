@@ -27,6 +27,7 @@ class Plugin(abaqusGui.AFXForm):
         self.kw_scale_min = abaqusGui.AFXIntKeyword(self.cmd, 'stress_scale_min', True, 1, False)
         self.kw_scale_max = abaqusGui.AFXIntKeyword(self.cmd, 'stress_scale_max', True, 1, False)
         self.kw_stress_script = CallBackStringKeyword(self.cmd, 'stress_script', True, '')
+        self.kw_error_script = CallBackStringKeyword(self.cmd, 'error_script', True, '')
         self.kw_run_jobs = abaqusGui.AFXBoolKeyword(self.cmd, 'run_jobs', abaqusGui.AFXBoolKeyword.TRUE_FALSE, True, True)
 
     # Getter for the next step
