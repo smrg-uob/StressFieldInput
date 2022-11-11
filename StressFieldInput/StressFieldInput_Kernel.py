@@ -398,10 +398,10 @@ def execute_jobs(jobs, error_script):
         # Feedback message
         print('-> Calculating error for job ' + str(i + 1) + ' of ' + str(len(jobs)))
         # open the ODB
-        odb = abaqus.openOdb(jobs[i].name + ".odb", readOnly=True)
+        odb = abaqus.session.openOdb(jobs[i].name + ".odb", readOnly=True)
         # Calculate the error (method will be available from the error script)
         try:
-            errors[i] = calculate_error(odb)
+            errors[i] = calculate_error(abaqus.session, odb)
         except Exception:
             # If an error script fails, return
             print('---> Error script threw an error during calculation')
