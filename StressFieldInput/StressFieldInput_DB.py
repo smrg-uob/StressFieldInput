@@ -92,9 +92,12 @@ class PluginDialog(abaqusGui.AFXDataDialog):
                            x=0, y=0, w=0, h=0, pl=1, pr=1, pt=1, pb=1)
         # Check box to run the jobs
         self.cbx_run_jobs = abaqusGui.FXCheckButton(p=frame_1_1, text='Run Jobs', tgt=form.kw_run_jobs, sel=0)
+        # Check box to iterate with the error script
+        self.cbx_iterate = abaqusGui.FXCheckButton(p=frame_1_1, text='Iterate', tgt=form.kw_iterate, sel=0)
         # Set currently selected items to their defaults (to force an update on first opening of the GUI)
         self.currentJob = -1
-        self.currentScript = ''
+        self.currentStressScript = ''
+        self.currentErrorScript = ''
         # Force initial updates
         self.on_job_selected()
 
@@ -109,7 +112,7 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         # If there are no jobs in the mdb, run default logic and return to avoid crashing
         if len(mdb.jobs.keys()) <= 0 or self.cbx_job.getNumItems() <= 0:
             self.currentJob = -1
-            self.update_action_button_state()
+            self.update_widget_states()
             return
         # Get the index of the currently selected job
         job_index = self.cbx_job.getItemData(self.cbx_job.getCurrentItem())
@@ -121,33 +124,46 @@ class PluginDialog(abaqusGui.AFXDataDialog):
             job_name = self.cbx_job.getItemText(self.currentJob)
             self.form.kw_def_job.setValue(job_name)
             # Update action button state
-            self.update_action_button_state()
+            self.update_widget_states()
 
     # Method for when a stress script has been selected
     def on_stress_script_selected(self, stress_script):
         # Update the current script
-        self.currentScript = stress_script
+        self.currentStressScript = stress_script
         # Update the action button state
-        self.update_action_button_state()
+        self.update_widget_states()
+
+    # Method for when a stress script has been selected
+    def on_error_script_selected(self, error_script):
+        # Update the current script
+        self.currentErrorScript = error_script
+        # Update the action button state
+        self.update_widget_states()
 
     # Method to update the state of the create button based on the current user inputs
-    def update_action_button_state(self):
+    def update_widget_states(self):
         # Check that the job has been defined
         job_flag = self.currentJob < 0
-        # Check that the script has been defined
-        script_flag = self.currentScript == ''
+        # Check that the stress script has been defined
+        script_flag = self.currentStressScript == ''
         # Update action button state accordingly
         if job_flag or script_flag:
             self.getActionButton(self.ID_CLICKED_APPLY).disable()
         else:
             self.getActionButton(self.ID_CLICKED_APPLY).enable()
+        # Check that the error script has been defined
+        if self.currentErrorScript == '':
+            self.form.kw_iterate.setValue(False)
+            self.cbx_iterate.disable()
+        else:
+            self.cbx_iterate.enable()
 
     # Override from parent class
     def processUpdates(self):
         # Super call
         abaqusGui.AFXDataDialog.processUpdates(self)
         # Update action button state
-        self.update_action_button_state()
+        self.update_widget_states()
 
 
 # Class for the file selection dialog

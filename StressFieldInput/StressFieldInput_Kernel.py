@@ -6,7 +6,7 @@ from MeshElementData import MeshElementData
 
 # Main method which runs the code
 def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_max,
-               stress_script, error_script, run_jobs):
+               stress_script, error_script, run_jobs, iterate):
     # Feedback message
     print('=== STRESS INPUT START ===')
     # Run checks
@@ -26,7 +26,7 @@ def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_
         jobs = create_jobs(default_job, mesh_data, stress_scale_counts, stress_scale_min, stress_scale_max)
         # Run the jobs
         if run_jobs:
-            errors = execute_jobs(jobs, error_script)
+            errors = execute_jobs(jobs, error_script, iterate)
             print(errors)
     # Feedback message
     print_exit_message()
@@ -373,7 +373,8 @@ def inject_stress_field(mesh_data, stress_scale, default_input, inject_index, pr
 
 
 # Method to run the jobs
-def execute_jobs(jobs, error_script):
+def execute_jobs(jobs, error_script, iterate):
+    # todo: error iterations
     # Run the jobs
     print('> Running jobs')
     for i in np.arange(0, len(jobs)):

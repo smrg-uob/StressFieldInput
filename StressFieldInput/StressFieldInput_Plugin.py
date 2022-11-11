@@ -29,15 +29,18 @@ class Plugin(abaqusGui.AFXForm):
         self.kw_stress_script = CallBackStringKeyword(self.cmd, 'stress_script', True, '')
         self.kw_error_script = CallBackStringKeyword(self.cmd, 'error_script', True, '')
         self.kw_run_jobs = abaqusGui.AFXBoolKeyword(self.cmd, 'run_jobs', abaqusGui.AFXBoolKeyword.TRUE_FALSE, True, True)
+        self.kw_iterate = abaqusGui.AFXBoolKeyword(self.cmd, 'iterate', abaqusGui.AFXBoolKeyword.TRUE_FALSE, True, False)
 
     # Getter for the next step
     def get_next_dialog(self):
-        # reset stress script keyword callbacks (prevents memory leaks)
+        # reset script keyword callbacks (prevents memory leaks)
         self.kw_stress_script.clear_callbacks()
+        self.kw_error_script.clear_callbacks()
         # create dialog
         dialog = StressFieldInput_DB.PluginDialog(self, self.STEP_MAIN)
-        # register callback for the stress script keyword
+        # register callback for the script keywords
         self.kw_stress_script.add_callback(dialog.on_stress_script_selected)
+        self.kw_error_script.add_callback(dialog.on_error_script_selected)
         # return the dialog
         return dialog
 
