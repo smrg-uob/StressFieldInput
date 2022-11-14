@@ -30,7 +30,11 @@ def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_
         job_builder = JobBuilder(default_job, mesh_data)
         # Run the logic
         print('> Running job logic')
-        run_logic(job_builder, stress_scale_counts, stress_scale_min, stress_scale_max, run_jobs, error_script, iterate)
+        stress_scales, errors = run_logic(job_builder, stress_scale_counts, stress_scale_min, stress_scale_max,
+                                          run_jobs, error_script, iterate)
+        print('-> Job logic completed')
+        # Output the results
+        output_scales_and_error(stress_scales, errors)
     # Feedback message
     print_exit_message()
 
@@ -366,6 +370,27 @@ def run_logic(job_builder, stress_scale_counts, stress_scale_min, stress_scale_m
                     errors[i] = -1
     if run_errors:
         return stress_scales, errors
+
+
+# Writes stress scales and errors to file
+def output_scales_and_error(stress_scales, errors):
+    if errors is not None:
+        # Print to console
+        print('--> Stress scales:')
+        print(stress_scales)
+        print('--> Errors:')
+        print(errors)
+        # Compile data to write to file
+        line_1 = 'Stress scale'
+        line_2 = 'Errors'
+        for i in np.arange(0, len(stress_scales)):
+            line_1 = line_1 + ', ' + str(stress_scales[i])
+            line_2 = line_2 + ', ' + str(errors[i])
+        # Write to file
+        f = open('stress_input_errors.txt', 'w')
+        f.write(line_1 + '\n' + line_2)
+        f.close()
+        print('--> Scales and errors written to \"stress_input_errors.txt\"')
 
 
 # Utility method to inspect an object and print its attributes and methods to the console
