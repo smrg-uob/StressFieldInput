@@ -24,7 +24,7 @@ class JobBuilder:
     # Creates a job for a given strength scale
     def create_job(self, job_name_index, stress_scale):
         # Create a copy of the default input
-        lines = self.default_input
+        lines = self.default_input[:]
         # Define injection index starting at the current next line
         inject_index = self.next_line
         # Put in the header for the predefined field
