@@ -355,7 +355,7 @@ def run_logic(job_builder, stress_scale_counts, stress_scale_min, stress_scale_m
         # If errors must be calculated, calculate the errors:
         if run_errors:
             print('-> Calculating errors')
-            for i in np.arange(0, len(stress_scale_counts)):
+            for i in np.arange(0, stress_scale_counts):
                 # Feedback message
                 print('--> Calculating error for job ' + str(i + 1) + ' of ' + str(len(jobs)))
                 # open the ODB
