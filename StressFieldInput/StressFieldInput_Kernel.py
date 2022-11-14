@@ -1,6 +1,7 @@
 import abaqus
 import numpy as np
 import traceback
+from MeshElementCategory import MeshElementCategory
 from MeshElementData import MeshElementData
 
 
@@ -12,7 +13,7 @@ def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_
     # Run checks
     if run_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_max, stress_script):
         # Characterize the mesh
-        mesh_data = characterize_mesh(default_job)
+        mesh_data = characterize_mesh(default_job, stress_script)
         # Do not continue if there is no mesh
         if mesh_data is None:
             print_exit_message()
@@ -83,7 +84,7 @@ def run_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_
     return True
 
 
-# Method to run the stress script
+# Method to check if the stress script has been properly defined
 def check_stress_script(stress_script):
     # Feedback message
     print('-> Checking stress script')
@@ -113,9 +114,24 @@ def check_stress_script(stress_script):
 
 
 # Method to characterize the mesh
-def characterize_mesh(default_job):
+def characterize_mesh(default_job, stress_script):
     # Feedback message
     print("> Characterizing mesh")
+    # Run the stress script to enable access to the get_category() method at the current level
+    categorize = True
+    try:
+        execfile(stress_script, globals())  # Pass in globals() to load the script's contents to the global dictionary
+    except Exception:
+        # If it fails, don't categorize
+        categorize = False
+    # Check if the categorization function is implemented
+    if categorize:
+        categorize = 'get_category' in globals().keys()
+        if categorize:
+            func = globals()['get_category']
+            categorize = callable(func)
+            if categorize:
+                print('-> Function "get_category" detected in stress script')
     # Fetch the job
     job = abaqus.mdb.jobs[default_job]
     # Fetch the model from the job
@@ -127,9 +143,11 @@ def characterize_mesh(default_job):
     instances = model.rootAssembly.allInstances
     instance_count = len(instances.keys())
     # Log element data for each of the instances
-    no_mesh = True
     mesh_data = np.empty(instance_count, dtype=object)
+    no_mesh = True
+    # Iterate over the part instances
     for instance_index in np.arange(0, instance_count):
+        # Fetch instance properties
         instance_key = instances.keys()[instance_index]
         instance = instances[instance_key]
         part_name = instance.part.name
@@ -138,8 +156,8 @@ def characterize_mesh(default_job):
         if element_count > 0:
             # Toggle the flag
             no_mesh = False
-            # Create mesh element data
-            mesh_data[instance_index] = np.empty(element_count, dtype=object)
+            # Create mesh categories
+            part_mesh_data = {}
             for element_index in np.arange(0, element_count):
                 # Fetch the element
                 element = elements[element_index]
@@ -158,8 +176,29 @@ def characterize_mesh(default_job):
                 x = (x + 0.0) / node_count
                 y = (y + 0.0) / node_count
                 z = (z + 0.0) / node_count
-                # create and store a new mesh element data object
-                mesh_data[instance_index][element_index] = MeshElementData(instance_key, part_name, label, x, y, z)
+                # create a new mesh element data object
+                element_data = MeshElementData(instance_key, part_name, label, x, y, z)
+                # Identify the category
+                if categorize:
+                    try:
+                        category = get_category(part_name, x, y, z)
+                    except Exception:
+                        # If categorization script fails, cancel
+                        print('-> Function "get_category" failed for element ' + element.get_label() + ', aborting')
+                        print(traceback.format_exc())
+                        return None
+                else:
+                    category = element_data.get_label()
+                # Store the mesh element
+                if category in part_mesh_data.keys():
+                    part_mesh_data[category].add_element(element_data)
+                else:
+                    part_mesh_data[category] = MeshElementCategory(category, element_data)
+            # Store the categories
+            mesh_data[instance_index] = part_mesh_data
+        else:
+            # Store None
+            mesh_data[instance_index] = None
     if no_mesh:
         print('-> No mesh present, aborting')
         return None
@@ -176,26 +215,27 @@ def define_stresses(mesh_data, stress_script):
         print('---> Stress script threw an error')
         print(traceback.format_exc())
         return None
-    print("Stress script exists: " + str("calculate_stress" in dir()))
-    # Iterate over the part instances
+    # Iterate over part instances
     for part_index in np.arange(0, len(mesh_data)):
-        part_element_data = mesh_data[part_index]
-        if (part_element_data is None) or (len(part_element_data) <= 0):
+        part_mesh_data = mesh_data[part_index]
+        if part_mesh_data is None:
             continue
-        # Iterate over the mesh elements
-        for element_index in np.arange(0, len(part_element_data)):
+        # Iterate over mesh element categories
+        for category_key in part_mesh_data.keys():
+            # Fetch the category
+            mesh_category = part_mesh_data[category_key]
             # Fetch the element
-            element = part_element_data[element_index]
+            element = mesh_category.get_first_element()
             # Calculate the stress (method will be available from the stress script)
             try:
                 stress = calculate_stress(element.get_part_name(), element.get_x(), element.get_y(), element.get_z())
             except Exception:
                 # If stress script fails, default to zero
-                print('---> Stress script threw an error during calculation for element ' + element.get_label())
+                print('---> Stress script threw an error during calculation for element ' + mesh_category.get_id())
                 print(traceback.format_exc())
                 stress = [0, 0, 0, 0, 0, 0]
             # Define the stress
-            element.define_stress(stress)
+            mesh_category.define_stress(stress)
     return mesh_data
 
 
@@ -249,16 +289,18 @@ def inject_element_sets(mesh_data, default_input):
             print('-> Found input file part definition for ' + current_part)
             set_index = 0
             while set_index < len(sets_to_inject):
-                part_element_data = mesh_data[sets_to_inject[set_index]]
-                if part_element_data is None or len(part_element_data) <= 0:
+                part_element_categories = mesh_data[sets_to_inject[set_index]]
+                if part_element_categories is None or len(part_element_categories) <= 0:
                     # this part has no data to inject, remove it from the parts to inject index list
                     sets_to_inject = np.delete(sets_to_inject, set_index)
                 else:
+                    # fetch a single category
+                    part_element_category = part_element_categories[part_element_categories.keys()[0]]
                     # this part has data to inject, check if it is the current part in the input file
-                    if part_element_data[0].get_part_name() == current_part:
+                    if part_element_category.get_part_name() == current_part:
                         # it is the current part in the input file, set as current part being injected
                         current_part_index = sets_to_inject[set_index]
-                        print('--> Injecting sets for part ' + part_element_data[0].get_part_name())
+                        print('--> Injecting sets for part ' + part_element_category.get_part_name())
                         # also remove it from the parts to inject index list
                         sets_to_inject = np.delete(sets_to_inject, set_index)
                         # increment the current line as it will be '*Node'
@@ -283,18 +325,37 @@ def inject_element_sets(mesh_data, default_input):
                 else:
                     # Inject the element sets
                     print('--> Element set injection starts at line: ' + str(next_line))
-                    part_element_data = mesh_data[current_part_index]
+                    part_element_categories = mesh_data[current_part_index]
                     # Decrement next line once
                     next_line = next_line - 1
                     # Do the actual injection
-                    for i in np.arange(0, len(part_element_data)):
-                        element = part_element_data[i]
+                    for category_key in part_element_categories.keys():
+                        # Fetch the category
+                        element_category = part_element_categories[category_key]
                         # Insert element set definition
-                        default_input[next_line:next_line] = ['*Elset, elset=' + element.get_set_name()]
+                        default_input[next_line:next_line] = ['*Elset, elset=' + element_category.get_set_name()]
                         next_line = next_line + 1
-                        # Insert element number
-                        default_input[next_line:next_line] = [str(element.get_label())]
-                        next_line = next_line + 1
+                        # Fetch the elements
+                        elements = element_category.get_elements()
+                        # Write the elements
+                        line = ''
+                        element_counter = 0
+                        element_limit = 8
+                        for i in np.arange(0, len(elements)):
+                            # Fetch next element
+                            element = elements[i]
+                            # Add the element to the line
+                            line = line + str(element.get_label()) + ','
+                            element_counter = element_counter + 1
+                            if element_counter == element_limit or i >= (len(elements) - 1):
+                                # Write the line
+                                default_input[next_line:next_line] = [line]
+                                next_line = next_line + 1
+                                # Reset the line and counter
+                                line = ''
+                                element_counter = 0
+                            else:
+                                line = line + ' '
                     # Reset the current part index
                     current_part_index = -1
                     # Re-increment the next line
@@ -350,21 +411,21 @@ def inject_stress_field(mesh_data, stress_scale, default_input, inject_index, pr
         inject_index = inject_index + 1
     lines[inject_index:inject_index] = ['*Initial Conditions, type=STRESS']
     inject_index = inject_index + 1
-    # Iterate over the part instances
+    # Iterate over part instances
     for part_index in np.arange(0, len(mesh_data)):
-        part_element_data = mesh_data[part_index]
-        if (part_element_data is None) or (len(part_element_data) <= 0):
+        part_mesh_data = mesh_data[part_index]
+        if part_mesh_data is None:
             continue
-        # Iterate over the mesh elements
-        for element_index in np.arange(0, len(part_element_data)):
-            # Fetch the element
-            element = part_element_data[element_index]
+        # Iterate over the mesh element categories
+        for category_key in part_mesh_data.keys():
+            # fetch the category
+            mesh_category = part_mesh_data[category_key]
             # Fetch the stress
-            stress = element.get_stress()
+            stress = mesh_category.get_stress()
             # Scale the stress
             stress = stress_scale * stress
             # Inject in the input file
-            line = element.get_instance_name() + '.' + element.get_set_name() + ','
+            line = mesh_category.get_instance_name() + '.' + mesh_category.get_set_name() + ','
             for stress_index in np.arange(0, len(stress)):
                 line = line + str(stress[stress_index]) + ','
             lines[inject_index:inject_index] = [line]

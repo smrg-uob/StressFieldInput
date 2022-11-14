@@ -10,7 +10,6 @@ class MeshElementData:
         self.x = x
         self.y = y
         self.z = z
-        self.stress = [0, 0, 0, 0, 0, 0]
 
     def get_instance_name(self):
         return self.instance
@@ -32,9 +31,3 @@ class MeshElementData:
 
     def get_set_name(self):
         return 'stress_field_el_' + str(self.get_label())
-
-    def define_stress(self, stress):
-        self.stress = stress
-
-    def get_stress(self):
-        return self.stress
