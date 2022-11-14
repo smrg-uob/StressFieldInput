@@ -54,7 +54,7 @@ class JobBuilder:
                     line = line + str(stress_scale*stress[stress_index]) + ','
                 lines[inject_index:inject_index] = [line]
         # Write the input file
-        input_file_name = 'stress_input_scale_' + str(stress_scale) + '.inp'
+        input_file_name = self.default_job + '_Stress_Input_Scale_' + str(job_name_index) + '.inp'
         out = open(input_file_name, 'w')
         for line_index in np.arange(0, len(lines)):
             out.write(lines[line_index] + '\n')
