@@ -48,12 +48,10 @@ class JobBuilder:
                 mesh_category = part_mesh_data[category_key]
                 # Fetch the stress
                 stress = mesh_category.get_stress()
-                # Scale the stress
-                stress = stress_scale * stress
-                # Inject in the input file
+                # Inject and scale in the input file
                 line = mesh_category.get_instance_name() + '.' + mesh_category.get_set_name() + ','
                 for stress_index in np.arange(0, len(stress)):
-                    line = line + str(stress[stress_index]) + ','
+                    line = line + str(stress_scale*stress[stress_index]) + ','
                 lines[inject_index:inject_index] = [line]
         # Write the input file
         input_file_name = 'stress_input_scale_' + str(stress_scale) + '.inp'
