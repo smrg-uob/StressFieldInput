@@ -12,7 +12,8 @@ def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_
     # Feedback message
     print('=== STRESS INPUT START ===')
     # Run checks
-    if run_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_max, stress_script):
+    if run_checks(
+            default_job, stress_scale_counts, stress_scale_min, stress_scale_max, stress_script, run_jobs, iterate):
         # Characterize the mesh
         mesh_data = characterize_mesh(default_job, stress_script)
         # Do not continue if there is no mesh
@@ -24,12 +25,12 @@ def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_
         if mesh_data is None:
             print_exit_message()
             return
-        # Build the jobs for the stress fields
-        jobs = create_jobs(default_job, mesh_data, stress_scale_counts, stress_scale_min, stress_scale_max)
-        # Run the jobs
-        if run_jobs:
-            errors = execute_jobs(jobs, error_script, iterate)
-            print(errors)
+        # Create a job builder:
+        print('> Creating job definition')
+        job_builder = JobBuilder(default_job, mesh_data)
+        # Run the logic
+        print('> Running job logic')
+        run_logic(job_builder, stress_scale_counts, stress_scale_min, stress_scale_max, run_jobs, error_script, iterate)
     # Feedback message
     print_exit_message()
 
@@ -40,7 +41,7 @@ def print_exit_message():
 
 
 # Method checking if all prerequisites are met before running the code
-def run_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_max, stress_script):
+def run_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_max, stress_script, run_jobs, iterate):
     # Feedback message
     print('> Performing checks')
     print('-> Checking inputs and MDB')
@@ -58,6 +59,14 @@ def run_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_
         return False
     if (stress_scale_max == stress_scale_min) and stress_scale_counts > 1:
         print('-> Unclear stress scale definition, multiple counts for equal min and max')
+        return False
+    # Check if run_jobs is defined if iterate is defined
+    if iterate and not run_jobs:
+        print('-> Can not iterate without running jobs, set "Run Jobs" must be set to true')
+        return False
+    # Check if there are sufficient scales defined for iterating
+    if iterate and stress_scale_counts < 3:
+        print('-> At least 2 scale counts are needed to start iterating')
         return False
     # Check if there is an active model
     if len(abaqus.mdb.models.keys()) <= 0:
@@ -240,64 +249,123 @@ def define_stresses(mesh_data, stress_script):
     return mesh_data
 
 
-# Method to handle reading and writing of input files
-def create_jobs(default_job, mesh_data, stress_scale_counts, stress_scale_min, stress_scale_max):
-    # Create new job builder
-    print('> Generating input files')
-    job_builder = JobBuilder(default_job, mesh_data)
-    # Initialize empty job array
+# Run plugin logic
+def run_logic(job_builder, stress_scale_counts, stress_scale_min, stress_scale_max, run_jobs, error_script, iterate):
+    # Initialize empty arrays for the jobs, stress scales and errors
     jobs = [None] * stress_scale_counts
-    # Run code for each stress scale count
-    for i in np.arange(0, stress_scale_counts):
-        if stress_scale_counts == 1:
-            stress_scale = stress_scale_min
-        else:
-            stress_scale = stress_scale_min + (i + 0.0)*(stress_scale_max - stress_scale_min)/(stress_scale_counts - 1)
-        print('---> Creating job for stress factor ' + str(stress_scale))
-        # Generate the job
-        jobs[i] = job_builder.create_job(i + 1, stress_scale)
-    # Return the jobs
-    return jobs
-
-
-# Method to run the jobs
-def execute_jobs(jobs, error_script, iterate):
-    # todo: error iterations
-    # Run the jobs
-    print('> Running jobs')
-    for i in np.arange(0, len(jobs)):
-        print('-> Running job ' + str(i + 1) + ' of ' + str(len(jobs)))
-        jobs[i].submit()
-        jobs[i].waitForCompletion()
-    # Check if an error script exists
-    if error_script is None or error_script == '':
-        return []
-    # Run the script to enable access to the calculate_error() method at the current level
-    print('> Calculating Errors')
-    try:
-        execfile(error_script, globals())  # Pass in globals() to load the script's contents to the global dictionary
-    except Exception:
-        # If it fails, return
-        print('-> Error script threw an error')
-        print(traceback.format_exc())
-        return []
-    # Calculate the errors
-    errors = np.zeros(len(jobs))
-    for i in np.arange(0, len(jobs)):
-        # Feedback message
-        print('-> Calculating error for job ' + str(i + 1) + ' of ' + str(len(jobs)))
-        # open the ODB
-        odb = abaqus.session.openOdb(jobs[i].name + ".odb", readOnly=True)
-        # Calculate the error (method will be available from the error script)
+    stress_scales = np.zeros(stress_scale_counts)
+    errors = np.zeros(stress_scale_counts)
+    # Check if error calculation is required
+    run_errors = run_jobs and (error_script is not None) and (error_script != '')
+    # If error calculation is required run the error script
+    if run_errors:
         try:
-            errors[i] = calculate_error(abaqus.session, odb)
+            execfile(error_script, globals())  # Pass in globals() to load the script's contents to the global dict
         except Exception:
-            # If an error script fails, return
-            print('---> Error script threw an error during calculation')
+            # If it fails, turn off error calculation
+            print('-> Error script threw an error')
             print(traceback.format_exc())
-            return []
-    # Return the errors
-    return errors
+            run_errors = False
+    # Split logic if error iteration is required
+    if iterate:
+        # Feedback message
+        print('-> Iterating for minimum error')
+        # Check if errors can be evaluated
+        if not run_errors:
+            print('--> Can not iterate without properly defined error script')
+        # Define tracking variables
+        current_min_index = -1
+        previous_index = -1
+        # Iterate
+        for i in np.arange(0, stress_scale_counts):
+            # Determine stress scale
+            if i == 0:
+                # Do the first iteration at the minimum scale factor
+                stress_scales[i] = stress_scale_min
+            elif i == 1:
+                # Do the second iteration at the minimum scale factor
+                stress_scales[i] = stress_scale_max
+            else:
+                # Do the third iteration at the average of the current minimum and the previous scale factors
+                stress_scales[i] = (stress_scales[current_min_index] + stress_scales[previous_index])/2
+            # Generate the job
+            print('--> Creating job for stress factor ' + str(stress_scales[i]))
+            jobs[i] = job_builder.create_job(i + 1, stress_scales[i])
+            # Run the job
+            print('--> Running job ' + str(i + 1) + ' of ' + str(len(jobs)))
+            jobs[i].submit()
+            jobs[i].waitForCompletion()
+            # Calculate the errors
+            print('--> Calculating error for job ' + str(i + 1) + ' of ' + str(len(jobs)))
+            # open the ODB
+            odb = abaqus.session.openOdb(jobs[i].name + ".odb", readOnly=True)
+            # Calculate the error (method will be available from the error script)
+            try:
+                errors[i] = calculate_error(abaqus.session, odb)
+            except Exception:
+                # If an error script fails, abort
+                print('---> Error script threw an error during calculation, aborting')
+                print(traceback.format_exc())
+                return None, None
+            print('--> Error = ' + str(errors[i]))
+            # Update tracking parameters
+            if i == 0:
+                # First iteration is straightforward
+                current_min_index = 0
+            elif i == 1:
+                # After second iteration an initial update is needed
+                if errors[i] < errors[current_min_index]:
+                    current_min_index = 1
+                    previous_index = 0
+                else:
+                    previous_index = 1
+            else:
+                # For further iterations keep updating
+                if errors[i] < errors[current_min_index]:
+                    previous_index = current_min_index
+                    current_min_index = i
+                else:
+                    previous_index = i
+    else:
+        # Feedback message
+        print('-> Sweeping stress scale factors')
+        # Simply iterate over the scales which are evenly spaced
+        for i in np.arange(0, stress_scale_counts):
+            if stress_scale_counts == 1:
+                stress_scale = stress_scale_min
+            else:
+                stress_scale = stress_scale_min + (i + 0.0) * (stress_scale_max - stress_scale_min) / (
+                            stress_scale_counts - 1)
+            # Generate the job
+            print('--> Creating job for stress factor ' + str(stress_scale))
+            jobs[i] = job_builder.create_job(i + 1, stress_scale)
+            # Store the stress scale factor
+            stress_scales[i] = stress_scale
+        # If jobs must be ran, run the jobs:
+        if run_jobs:
+            print('-> Running jobs')
+            for i in np.arange(0, stress_scale_counts):
+                print('--> Running job ' + str(i + 1) + ' of ' + str(len(jobs)))
+                jobs[i].submit()
+                jobs[i].waitForCompletion()
+        # If errors must be calculated, calculate the errors:
+        if run_errors:
+            print('-> Calculating errors')
+            for i in np.arange(0, len(stress_scale_counts)):
+                # Feedback message
+                print('--> Calculating error for job ' + str(i + 1) + ' of ' + str(len(jobs)))
+                # open the ODB
+                odb = abaqus.session.openOdb(jobs[i].name + ".odb", readOnly=True)
+                # Calculate the error (method will be available from the error script)
+                try:
+                    errors[i] = calculate_error(abaqus.session, odb)
+                except Exception:
+                    # If an error script fails, set the error to -1
+                    print('---> Error script threw an error during calculation')
+                    print(traceback.format_exc())
+                    errors[i] = -1
+    if run_errors:
+        return stress_scales, errors
 
 
 # Utility method to inspect an object and print its attributes and methods to the console
