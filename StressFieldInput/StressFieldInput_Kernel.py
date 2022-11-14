@@ -96,15 +96,19 @@ def check_stress_script(stress_script):
         print(traceback.format_exc())
         return False
     # Check now if the stress calculation method exists
-    #if 'calculate_stress' not in dir():
-    #    print('--> Function "calculate_stress" not defined in stress script')
-    #    return False
+    if 'calculate_stress' not in globals().keys():
+        print('--> Function "calculate_stress" not defined in stress script')
+        return False
     # Check if the method is callable
-    #if not callable(getattr('calculate_stress')):
-    #    print('--> Function "calculate_stress" not callable in stress script')
-    #    return False
+    func = globals()['calculate_stress']
+    if not callable(func):
+        print('--> Function "calculate_stress" not callable in stress script')
+        return False
     # Check the method arguments
-    # todo
+    import inspect
+    args = inspect.getargspec(func)
+    if len(args) != 4:
+        print('--> Invalid arguments for "calculate_stress"; should have precisely 4: "part", "x", "y", and "z".')
     return True
 
 
@@ -172,6 +176,7 @@ def define_stresses(mesh_data, stress_script):
         print('---> Stress script threw an error')
         print(traceback.format_exc())
         return None
+    print("Stress script exists: " + str("calculate_stress" in dir()))
     # Iterate over the part instances
     for part_index in np.arange(0, len(mesh_data)):
         part_element_data = mesh_data[part_index]
