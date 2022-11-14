@@ -57,12 +57,12 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         # Text box for the minimum stress value scale
         self.txt_scale_min = abaqusGui.AFXTextField(p=aligner, ncols=widget_width, labelText='Scale Min',
                                                     tgt=form.kw_scale_min, sel=0,
-                                                    opts=abaqusGui.AFXTEXTFIELD_INTEGER | abaqusGui.LAYOUT_CENTER_Y)
+                                                    opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y)
         self.txt_scale_min.setText('1')
         # Text box for the maximum stress value scale
         self.txt_scale_max = abaqusGui.AFXTextField(p=aligner, ncols=widget_width, labelText='Scale Max',
                                                     tgt=form.kw_scale_max, sel=0,
-                                                    opts=abaqusGui.AFXTEXTFIELD_INTEGER | abaqusGui.LAYOUT_CENTER_Y)
+                                                    opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y)
         self.txt_scale_max.setText('1')
         # Widgets to load stress script
         self.lbl_stress_script = abaqusGui.FXLabel(p=frame_1_1, text='Stress Script')
