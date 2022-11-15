@@ -104,7 +104,7 @@ toolset.registerGuiMenuButton(
     icon=None,
     kernelInitString='import StressFieldInput_Kernel',
     applicableModules=abaqusConstants.ALL,
-    version='1.1',
+    version='2.0',
     author='Xavier van Heule',
     description='A plugin to easily input arbitrary stress fields into Abaqus',
     helpUrl='https://github.com/smrg-uob/StressFieldInput/blob/master/README.md'
