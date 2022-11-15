@@ -172,7 +172,13 @@ def characterize_mesh(default_job, stress_script):
             no_mesh = False
             # Create mesh data for the part
             mesh_data_part = MeshData.create_mesh_data(element_count, categorize)
+            # tracker for progress
+            progress = -1
             for element_index in np.arange(0, element_count):
+                # Update progress feedback
+                if np.floor(10*element_index/element_count) >= progress:
+                    progress = progress + 1
+                    print('-> ' + str(10*progress) + '%')
                 # Fetch the element
                 element = elements[element_index]
                 # fetch the label
