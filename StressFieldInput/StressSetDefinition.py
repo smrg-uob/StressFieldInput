@@ -7,7 +7,7 @@ class StressSetDefinition:
         pass
 
     def get_part_name(self):
-       pass
+        pass
 
     def get_instance_name(self):
         pass

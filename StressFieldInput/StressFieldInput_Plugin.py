@@ -22,14 +22,29 @@ class Plugin(abaqusGui.AFXForm):
         self.cmd = abaqusGui.AFXGuiCommand(mode=self, method='run_plugin', objectName='StressFieldInput_Kernel',
                                            registerQuery=False)
         # Define the keywords for the command
-        self.kw_def_job = abaqusGui.AFXStringKeyword(self.cmd, 'default_job', True, '')
-        self.kw_scale_counts = abaqusGui.AFXIntKeyword(self.cmd, 'stress_scale_counts', True, 1, False)
-        self.kw_scale_min = abaqusGui.AFXFloatKeyword(self.cmd, 'stress_scale_min', True, 1)
-        self.kw_scale_max = abaqusGui.AFXFloatKeyword(self.cmd, 'stress_scale_max', True, 1)
-        self.kw_stress_script = CallBackStringKeyword(self.cmd, 'stress_script', True, '')
-        self.kw_error_script = CallBackStringKeyword(self.cmd, 'error_script', True, '')
-        self.kw_run_jobs = abaqusGui.AFXBoolKeyword(self.cmd, 'run_jobs', abaqusGui.AFXBoolKeyword.TRUE_FALSE, True, True)
-        self.kw_iterate = abaqusGui.AFXBoolKeyword(self.cmd, 'iterate', abaqusGui.AFXBoolKeyword.TRUE_FALSE, True, False)
+        self.kw_def_job = abaqusGui.AFXStringKeyword(
+            self.cmd, 'default_job', True, ''
+        )
+        self.kw_scale_counts = abaqusGui.AFXIntKeyword(
+            self.cmd, 'stress_scale_counts', True, 1, False
+        )
+        self.kw_scale_min = abaqusGui.AFXFloatKeyword(
+            self.cmd, 'stress_scale_min', True, 1)
+        self.kw_scale_max = abaqusGui.AFXFloatKeyword(
+            self.cmd, 'stress_scale_max', True, 1
+        )
+        self.kw_stress_script = CallBackStringKeyword(
+            self.cmd, 'stress_script', True, ''
+        )
+        self.kw_error_script = CallBackStringKeyword(
+            self.cmd, 'error_script', True, ''
+        )
+        self.kw_run_jobs = abaqusGui.AFXBoolKeyword(
+            self.cmd, 'run_jobs', abaqusGui.AFXBoolKeyword.TRUE_FALSE, True, True
+        )
+        self.kw_iterate = abaqusGui.AFXBoolKeyword(
+            self.cmd, 'iterate', abaqusGui.AFXBoolKeyword.TRUE_FALSE, True, False
+        )
 
     # Getter for the next step
     def get_next_dialog(self):
@@ -62,16 +77,16 @@ class Plugin(abaqusGui.AFXForm):
 
 # Wrapper class to provide callbacks for when the keyword changes
 class CallBackStringKeyword(abaqusGui.AFXStringKeyword):
-    def __init__(self, command, name, isRequired, defaultValue,):
-        abaqusGui.AFXStringKeyword.__init__(self, command, name, isRequired, defaultValue)
+    def __init__(self, command, name, is_required, default_value, ):
+        abaqusGui.AFXStringKeyword.__init__(self, command, name, is_required, default_value)
         self.callbacks = []
 
-    def setValue(self, newValue):
+    def setValue(self, new_value):
         # Call super
-        abaqusGui.AFXStringKeyword.setValue(self, newValue)
+        abaqusGui.AFXStringKeyword.setValue(self, new_value)
         # Run callbacks
         for callback in self.callbacks:
-            callback(newValue)
+            callback(new_value)
 
     def add_callback(self, callback):
         # Add the callback

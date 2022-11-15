@@ -1,5 +1,4 @@
 import abaqusGui
-import kernelAccess
 from kernelAccess import mdb
 
 
