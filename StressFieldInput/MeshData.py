@@ -63,7 +63,7 @@ class MeshDataCategorized(MeshData):
         else:
             index = len(self.category_indices_by_name)
             self.category_indices_by_name[category] = index
-            self.categories[index] = Category(element, self.element_count)
+            self.categories[index] = Category(category, element, self.element_count)
 
     def get_stress_set_count(self):
         return len(self.category_indices_by_name)
