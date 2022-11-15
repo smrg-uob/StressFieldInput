@@ -224,6 +224,8 @@ def characterize_mesh(default_job, stress_script):
 
 # Method to define the stress data
 def define_stresses(mesh_data, stress_script):
+    # Feedback message
+    print("> Calculating stresses")
     # Run the script to enable access to the calculate_stress() method at the current level
     try:
         execfile(stress_script, globals())  # Pass in globals() to load the script's contents to the global dictionary
