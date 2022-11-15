@@ -376,6 +376,8 @@ def run_logic(job_builder, stress_scale_counts, stress_scale_min, stress_scale_m
                     errors[i] = -1
     if run_errors:
         return stress_scales, errors
+    else:
+        return stress_scales, None
 
 
 # Writes stress scales and errors to file
