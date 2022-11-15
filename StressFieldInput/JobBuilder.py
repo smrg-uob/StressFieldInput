@@ -39,17 +39,17 @@ class JobBuilder:
         inject_index = inject_index + 1
         # Iterate over part instances
         for part_index in np.arange(0, len(self.mesh_data)):
-            part_mesh_data = self.mesh_data[part_index]
-            if part_mesh_data is None:
+            mesh_data_part = self.mesh_data[part_index]
+            if mesh_data_part is None:
                 continue
-            # Iterate over the mesh element categories
-            for category_key in part_mesh_data.keys():
-                # fetch the category
-                mesh_category = part_mesh_data[category_key]
+            # Iterate over the stress sets
+            for stress_set in mesh_data_part.get_stress_sets():
                 # Fetch the stress
-                stress = mesh_category.get_stress()
+                stress = stress_set.get_stress()
+                if stress is None:
+                    continue
                 # Inject and scale in the input file
-                line = mesh_category.get_instance_name() + '.' + mesh_category.get_set_name() + ','
+                line = stress_set.get_instance_name() + '.' + stress_set.get_set_name() + ','
                 for stress_index in np.arange(0, len(stress)):
                     line = line + str(stress_scale*stress[stress_index]) + ','
                 lines[inject_index:inject_index] = [line]
@@ -98,26 +98,26 @@ class JobBuilder:
                 print('-> Found input file part definition for ' + current_part)
                 set_index = 0
                 while set_index < len(sets_to_inject):
-                    part_element_categories = self.mesh_data[sets_to_inject[set_index]]
-                    if part_element_categories is None or len(part_element_categories) <= 0:
+                    mesh_data_part = self.mesh_data[sets_to_inject[set_index]]
+                    if mesh_data_part is None or mesh_data_part.get_stress_set_count() <= 0:
                         # this part has no data to inject, remove it from the parts to inject index list
                         sets_to_inject = np.delete(sets_to_inject, set_index)
+                        continue
+                    # fetch a single stress set
+                    stress_set = mesh_data_part.get_stress_sets()[0]
+                    # this part has data to inject, check if it is the current part in the input file
+                    if stress_set.get_part_name() == current_part:
+                        # it is the current part in the input file, set as current part being injected
+                        current_part_index = sets_to_inject[set_index]
+                        print('--> Injecting sets for part ' + stress_set.get_part_name())
+                        # also remove it from the parts to inject index list
+                        sets_to_inject = np.delete(sets_to_inject, set_index)
+                        # increment the current line as it will be '*Node'
+                        self.next_line = self.next_line + 1
+                        break
                     else:
-                        # fetch a single category
-                        part_element_category = part_element_categories[part_element_categories.keys()[0]]
-                        # this part has data to inject, check if it is the current part in the input file
-                        if part_element_category.get_part_name() == current_part:
-                            # it is the current part in the input file, set as current part being injected
-                            current_part_index = sets_to_inject[set_index]
-                            print('--> Injecting sets for part ' + part_element_category.get_part_name())
-                            # also remove it from the parts to inject index list
-                            sets_to_inject = np.delete(sets_to_inject, set_index)
-                            # increment the current line as it will be '*Node'
-                            self.next_line = self.next_line + 1
-                            break
-                        else:
-                            # this is a different part, leave it in the list and move to the next index
-                            set_index = set_index + 1
+                        # this is a different part, leave it in the list and move to the next index
+                        set_index = set_index + 1
                 if current_part_index < 0:
                     print('--> Skipping ' + current_part)
             # current mode is set injection
@@ -134,20 +134,18 @@ class JobBuilder:
                     else:
                         # Inject the element sets
                         print('--> Element set injection starts at line: ' + str(self.next_line))
-                        part_element_categories = self.mesh_data[current_part_index]
+                        mesh_data_part = self.mesh_data[current_part_index]
                         # Decrement next line once
                         self.next_line = self.next_line - 1
                         # Do the actual injection
-                        for category_key in part_element_categories.keys():
-                            # Fetch the category
-                            element_category = part_element_categories[category_key]
+                        for stress_set in mesh_data_part.get_stress_sets():
                             # Insert element set definition
                             self.default_input[self.next_line:self.next_line] = [
-                                '*Elset, elset=' + element_category.get_set_name()
+                                '*Elset, elset=' + stress_set.get_set_name()
                             ]
                             self.next_line = self.next_line + 1
                             # Fetch the elements
-                            elements = element_category.get_elements()
+                            elements = stress_set.get_elements()
                             # Write the elements
                             line = ''
                             element_counter = 0

@@ -2,7 +2,7 @@ import abaqus
 import numpy as np
 import traceback
 from JobBuilder import JobBuilder
-from MeshElementCategory import MeshElementCategory
+from MeshData import MeshData
 from MeshElementData import MeshElementData
 
 
@@ -170,8 +170,8 @@ def characterize_mesh(default_job, stress_script):
         if element_count > 0:
             # Toggle the flag
             no_mesh = False
-            # Create mesh categories
-            part_mesh_data = {}
+            # Create mesh data for the part
+            mesh_data_part = MeshData.create_mesh_data(element_count, categorize)
             for element_index in np.arange(0, element_count):
                 # Fetch the element
                 element = elements[element_index]
@@ -202,14 +202,11 @@ def characterize_mesh(default_job, stress_script):
                         print(traceback.format_exc())
                         return None
                 else:
-                    category = element_data.get_label()
+                    category = None
                 # Store the mesh element
-                if category in part_mesh_data.keys():
-                    part_mesh_data[category].add_element(element_data)
-                else:
-                    part_mesh_data[category] = MeshElementCategory(category, element_data)
+                mesh_data_part.add_element(element_data, category)
             # Store the categories
-            mesh_data[instance_index] = part_mesh_data
+            mesh_data[instance_index] = mesh_data_part
         else:
             # Store None
             mesh_data[instance_index] = None
@@ -231,25 +228,26 @@ def define_stresses(mesh_data, stress_script):
         return None
     # Iterate over part instances
     for part_index in np.arange(0, len(mesh_data)):
-        part_mesh_data = mesh_data[part_index]
-        if part_mesh_data is None:
+        mesh_data_part = mesh_data[part_index]
+        if mesh_data_part is None:
             continue
-        # Iterate over mesh element categories
-        for category_key in part_mesh_data.keys():
-            # Fetch the category
-            mesh_category = part_mesh_data[category_key]
-            # Fetch the element
-            element = mesh_category.get_first_element()
+        # Iterate over stress sets
+        for stress_set in mesh_data_part.get_stress_sets():
             # Calculate the stress (method will be available from the stress script)
+            instance_name = stress_set.get_instance_name()
+            x = stress_set.get_x()
+            y = stress_set.get_y()
+            z = stress_set.get_z()
             try:
-                stress = calculate_stress(element.get_part_name(), element.get_x(), element.get_y(), element.get_z())
+                stress = calculate_stress(instance_name, x, y, z)
             except Exception:
-                # If stress script fails, default to zero
-                print('---> Stress script threw an error during calculation for element ' + mesh_category.get_id())
+                # If stress script fails, print error and default to None
+                coords = '(' + str(x) + ', ' + str(y) + ', ' + str(z) + ')'
+                print('---> Stress script threw an error during calculation for ' + instance_name + ' at ' + coords)
                 print(traceback.format_exc())
-                stress = [0, 0, 0, 0, 0, 0]
+                stress = None
             # Define the stress
-            mesh_category.define_stress(stress)
+            stress_set.define_stress(stress)
     return mesh_data
 
 
