@@ -93,6 +93,7 @@ Without iteration, the plugin will sweep stress scales evenly spaced between the
 
 On the other hand, if iteration is enabled (after an error script has been defined), the plugin will first calculate the error for the minimum and maximum stress scales. Then, for the third iteration, the sctress scale in the middle of these two will be calculated.
 For every other iteration after that, the middle point between the last two minima will be calculated until the desired number of stress scales has been reached, as illustrated in the figure below:
+
 ![Iteration Scheme](https://github.com/smrg-uob/StressFieldInput/blob/main/doc/iteration_scheme.png)
 
 Note that finding the minimum with this scheme is not guaranteed as it requires some knowledge of where the minimum is located beforehand, therefore it is advised to first perform a uniformly spaced sweep to get an idea of where the minimum is roughly located, followed by an iterative sweep focused around the minimum.
