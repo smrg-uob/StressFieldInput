@@ -89,7 +89,7 @@ If the run jobs option is checked, the plugin will also run these jobs in sequen
 The plugin does not make any modifications to the MDB, except for creating new jobs based on the default job.
 
 ### Iteration
-Without iteration, the plugin will sweep stress scales evenly spaced between the defined minimum and maximum. For instance, if the minimum is set to 1.0, the maximum to 1.5, and the scale count to 6, the plugin will apply stress scales 1.0, 1.1, 1.2, 1.3, 1.4, and 1.6.
+Without iteration, the plugin will sweep stress scales evenly spaced between the defined minimum and maximum. For instance, if the minimum is set to 1.00, the maximum to 2.00, and the scale count to 5, the plugin will apply stress scales 1.00, 1.25, 1.50, 1.75, and 2.00.
 
 On the other hand, if iteration is enabled (after an error script has been defined), the plugin will first calculate the error for the minimum and maximum stress scales. Then, for the third iteration, the sctress scale in the middle of these two will be calculated.
 For every other iteration after that, the middle point between the last two minima will be calculated until the desired number of stress scales has been reached, as illustrated in the figure below:
