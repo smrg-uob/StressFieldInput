@@ -39,25 +39,30 @@ Its use is quite straightforward:
 The arbitrary stress field is defined by a stress script which must be written and provided by the user.
 This script must at minimum contain a function to calculate the stress for given coordinates in a part:
 ```
-# Determines the stress at coordinates (x, y, z) in the given part
+# Determines the stress at coordinates (x, y, z) in the assembly for the given part
 def calculate_stress(part, x, y, z):
   # This must return a tuple of size 6 containing the stress components [S11, S22, S33, S12, S13, S23]
   return [0, 0, 0, 0, 0, 0]
+  # Alternatively, 'None' can be returned to indicate no stress needs to be defined at this point:
+  return None
 ```
 
 By default, the plugin will create an element set for every single element in the input file, which can lead to rather large input files.
 If multiple elements in the model would have an identical stress state, it is also possible to define categories of elements in the stress script.
-To do this, a second function must be implemented:
+To do this, a second, optional, function can be implemented:
 ```
-# Determines the stress at coordinates (x, y, z) in the given part
+# Determines the stress at coordinates (x, y, z) in the assembly for the given part
 def get_category(part, x, y, z):
   # This return a unique identifier for the category the point (x, y, z) belongs to
-  return <unique id>  # <unique id> must be a String
+  return <unique id>  # <unique id> can be an integer or string
+  # Alternatively, 'None' can be returned to indicate no stress needs to be defined at this point:
+  return None
 ```
 
 If get_category is defined, the plugin will automatically divide the elements in separate element sets where each element set has the same stress state.
 Subsequently, the function 'calculate_stress' will only be called for one element in each set instead of for every element.
 As a result, the resulting input file can become significantly shorter, resulting in quicker input file processing times.
+
 
 ###  The Error Script
 The error script is an optional script with the function to determine the error between the equilibrated quantities (stresses, strains, displacements, etc.) in the model and the user's desired input values.
@@ -84,7 +89,14 @@ If the run jobs option is checked, the plugin will also run these jobs in sequen
 The plugin does not make any modifications to the MDB, except for creating new jobs based on the default job.
 
 ### Iteration
-TODO
+Without iteration, the plugin will sweep stress scales evenly spaced between the defined minimum and maximum. For instance, if the minimum is set to 1.0, the maximum to 1.5, and the scale count to 6, the plugin will apply stress scales 1.0, 1.1, 1.2, 1.3, 1.4, and 1.6.
+
+On the other hand, if iteration is enabled (after an error script has been defined), the plugin will first calculate the error for the minimum and maximum stress scales. Then, for the third iteration, the sctress scale in the middle of these two will be calculated.
+For every other iteration after that, the middle point between the last two minima will be calculated until the desired number of stress scales has been reached, as illustrated in the figure below:
+![Iteration Scheme](https://github.com/smrg-uob/StressFieldInput/blob/main/doc/iteration_scheme.png)
+
+Note that finding the minimum with this scheme is not guaranteed as it requires some knowledge of where the minimum is located beforehand, therefore it is advised to first perform a uniformly spaced sweep to get an idea of where the minimum is roughly located, followed by an iterative sweep focused around the minimum.
+
 
 ## Acknowledgement
 Simon McKendrey for the idea of applying scale factors to the initial stresses.
