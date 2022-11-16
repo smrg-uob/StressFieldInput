@@ -11,13 +11,12 @@ When done correctly, the plugin should appear in Abaqus CAE under the plugins it
 
 ## Pre-Defined Fields
 A pre-defined stress field can be applied to a model in Abaqus to take into account residual stresses.
-Natively, Abaqus CAE supports two ways to implement pre-defined stress fields: either a global, uniform stress field, or the output from another simulation under the form of an ODB.
+Natively, Abaqus CAE supports several ways to implement pre-defined stress fields. A first one is directly in CAE; which can then be defined as a global, uniform stress field, or the output from another simulation under the form of an ODB. More complicated stress fields have to be defined via the user subroutine [SIGINI](http://130.149.89.49:2080/v6.13/books/sub/ch01s01asb18.html), which allows more freedom.
+A third and final way would be to manipulate the input files which can be a somewhat convoluted task.
 
-To define custom, arbitrary stress fields, the input files must be manipulated which can be a somewhat convoluted task.
-This plugin aims to simplify this.
-
-Of course, as residual stress fields must equilibrate with themselves and/or the boundary conditions, when running a simulation with the pre-defined stress field, the component will deform causing relaxation of the stresses, as well as other components of stress appearing.
+Ultimately, as residual stress fields must equilibrate with themselves and/or the boundary conditions, when running a simulation with the pre-defined stress field, the component will deform causing relaxation of the stresses, as well as other components of stress appearing.
 To resolve this, one way is the scale the initial stress field by an arbitrary factor, and find the factor for which the resulting stress field, after equilibration, matches the target as closely as possible (needs citation).
+This plugin aims to make this process easier to execute.
 
 
 ## The plugin
@@ -66,7 +65,8 @@ As a result, the resulting input file can become significantly shorter, resultin
 
 ###  The Error Script
 The error script is an optional script with the function to determine the error between the equilibrated quantities (stresses, strains, displacements, etc.) in the model and the user's desired input values.
-For instance, if one would have a measured stress tensor in some points in the model, the error script could extract the resulting stresses in these points from the model and return the root mean square of the difference between the model and the experimental data:
+For instance, if one would have a measured stress tensor in some points in the model, the error script could extract the resulting stresses in these points from the model and return the root mean square of the difference between the model and the experimental data.
+This must be implemented in a function called `calculate_error`, which takes two arguments: a reference to an Abaqus [session](http://130.149.89.49:2080/v6.13/books/ker/pt01ch47pyo01.html), and an Abaqus [ODB](http://130.149.89.49:2080/v6.13/books/ker/pt01ch34pyo01.html):
 ```
 # Calculates the error from an Abaqus session with output database (odb)
 def calculate_error(session, odb):
