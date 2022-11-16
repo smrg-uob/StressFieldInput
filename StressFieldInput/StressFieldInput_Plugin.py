@@ -40,7 +40,7 @@ class Plugin(abaqusGui.AFXForm):
             self.cmd, 'error_script', True, ''
         )
         self.kw_run_jobs = abaqusGui.AFXBoolKeyword(
-            self.cmd, 'run_jobs', abaqusGui.AFXBoolKeyword.TRUE_FALSE, True, True
+            self.cmd, 'run_jobs', abaqusGui.AFXBoolKeyword.TRUE_FALSE, True, False
         )
         self.kw_iterate = abaqusGui.AFXBoolKeyword(
             self.cmd, 'iterate', abaqusGui.AFXBoolKeyword.TRUE_FALSE, True, False
