@@ -52,7 +52,7 @@ class PluginDialog(abaqusGui.AFXDataDialog):
                 index = index + 1
         # Widgets to load stress script
         self.lbl_stress_script = abaqusGui.FXLabel(p=frame_1_1, text='Stress Script')
-        file_handler_stress = FileOpenDialog(form.kw_stress_script, '*.py')
+        file_handler_stress = FileOpenDialog(form.kw_stress_script, 'Select Stress Script', '*.py')
         frame_file_text_1 = abaqusGui.FXHorizontalFrame(p=frame_1_1)
         frame_file_text_1.setSelector(99)
         self.txt_stress_script = abaqusGui.AFXTextField(p=frame_file_text_1, ncols=widget_width + 9, labelText='',
@@ -65,7 +65,7 @@ class PluginDialog(abaqusGui.AFXDataDialog):
                            x=0, y=0, w=0, h=0, pl=1, pr=1, pt=1, pb=1)
         # Widgets to load error script
         self.lbl_error_script = abaqusGui.FXLabel(p=frame_1_1, text='Error Script (optional)')
-        file_handler_error = FileOpenDialog(form.kw_error_script, '*.py')
+        file_handler_error = FileOpenDialog(form.kw_error_script, 'Select Error Script', '*.py')
         frame_file_text_2 = abaqusGui.FXHorizontalFrame(p=frame_1_1)
         frame_file_text_2.setSelector(99)
         self.txt_error_script = abaqusGui.AFXTextField(p=frame_file_text_2, ncols=widget_width + 9, labelText='',
@@ -98,20 +98,23 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         # Aligner
         self.aligner_scaling = abaqusGui.AFXVerticalAligner(p=self.tab_frame_scaling)
         # Text box for the number of stress value scales
-        self.txt_scale_counts = abaqusGui.AFXTextField(p=self.aligner_scaling, ncols=widget_width,
-                                                       labelText='Scale Count', tgt=form.kw_scale_counts, sel=0,
-                                                       opts=abaqusGui.AFXTEXTFIELD_INTEGER | abaqusGui.LAYOUT_CENTER_Y)
-        self.txt_scale_counts.setText('1')
+        self.txt_scale_counts = TextFieldWithDefault(p=self.aligner_scaling, ncols=widget_width,
+                                                     labelText='Scale Count', tgt=form.kw_scale_counts, sel=0,
+                                                     opts=abaqusGui.AFXTEXTFIELD_INTEGER | abaqusGui.LAYOUT_CENTER_Y,
+                                                     defaultValue='1')
+        self.form.kw_scale_counts.setValue(1)
         # Text box for the minimum stress value scale
-        self.txt_scale_min = abaqusGui.AFXTextField(p=self.aligner_scaling, ncols=widget_width, labelText='Scale Min',
-                                                    tgt=form.kw_scale_min, sel=0,
-                                                    opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y)
-        self.txt_scale_min.setText('1.0')
+        self.txt_scale_min = TextFieldWithDefault(p=self.aligner_scaling, ncols=widget_width, labelText='Scale Min',
+                                                  tgt=form.kw_scale_min, sel=0,
+                                                  opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y,
+                                                  defaultValue='1.0')
+        self.form.kw_scale_min.setValue(1.0)
         # Text box for the maximum stress value scale
-        self.txt_scale_max = abaqusGui.AFXTextField(p=self.aligner_scaling, ncols=widget_width, labelText='Scale Max',
-                                                    tgt=form.kw_scale_max, sel=0,
-                                                    opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y)
-        self.txt_scale_max.setText('1.0')
+        self.txt_scale_max = TextFieldWithDefault(p=self.aligner_scaling, ncols=widget_width, labelText='Scale Max',
+                                                  tgt=form.kw_scale_max, sel=0,
+                                                  opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y,
+                                                  defaultValue='1.0')
+        self.form.kw_scale_max.setValue(1.0)
         # Check box to run the jobs
         self.cbx_run_jobs = abaqusGui.FXCheckButton(p=self.tab_frame_scaling, text='Run Jobs',
                                                     tgt=form.kw_run_jobs, sel=0)
@@ -136,18 +139,26 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         # Aligner
         self.aligner_subst = abaqusGui.AFXVerticalAligner(p=self.tab_frame_subst)
         # Text box for the number of iterations
-        self.txt_max_it = abaqusGui.AFXTextField(p=self.aligner_subst, ncols=8, labelText='Max Iterations',
-                                                 tgt=form.kw_max_it, sel=0)
+        self.txt_max_it = TextFieldWithDefault(p=self.aligner_subst, ncols=8, labelText='Max Iterations',
+                                               tgt=form.kw_max_it, sel=0,
+                                               opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y,
+                                               defaultValue='1')
+        self.form.kw_max_it.setValue(1)
         self.txt_max_it.disable()
         # Text box for the maximum deviation
-        self.txt_max_dev = abaqusGui.AFXTextField(p=self.aligner_subst, ncols=8, labelText='Deviation',
-                                                  tgt=form.kw_dev, sel=0)
+        self.txt_max_dev = TextFieldWithDefault(p=self.aligner_subst, ncols=8, labelText='Deviation',
+                                                tgt=form.kw_dev, sel=0,
+                                                opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y,
+                                                defaultValue='0.001')
+        self.form.kw_dev.setValue(0.001)
         self.txt_max_dev.disable()
         # Text box for the maximum deviation
-        self.txt_max_error = abaqusGui.AFXTextField(p=self.aligner_subst, ncols=8, labelText='Error Threshold',
-                                                    tgt=form.kw_err, sel=0)
+        self.txt_max_error = TextFieldWithDefault(p=self.aligner_subst, ncols=8, labelText='Error Threshold',
+                                                  tgt=form.kw_err, sel=0,
+                                                  opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y,
+                                                  defaultValue='0.001')
+        self.form.kw_err.setValue(0.001)
         self.txt_max_error.disable()
-        self.txt_scale_max.setText('1')
         # Set currently selected items to their defaults (to force an update on first opening of the GUI)
         self.currentJob = -1
         self.currentStressScript = ''
@@ -259,9 +270,29 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         self.update_widget_states()
 
 
+# Class for a text field with a forced default value
+# (as for some reason, text fields in a tab book don't properly show the default values)
+class TextFieldWithDefault(abaqusGui.AFXTextField):
+    def __init__(self, p, ncols, labelText, tgt=None, sel=0, opts=abaqusGui.AFXTEXTFIELD_STRING, x=0, y=0, w=0, h=0,
+                 pl=abaqusGui.DEFAULT_PAD, pr=abaqusGui.DEFAULT_PAD, pt=abaqusGui.DEFAULT_PAD, pb=abaqusGui.DEFAULT_PAD,
+                 defaultValue=''):
+        # Super constructor
+        abaqusGui.AFXTextField.__init__(self, p, ncols, labelText, tgt, sel, opts, x, y, w, h, pl, pr, pt, pb)
+        # Save the default value
+        self.default_value = str(defaultValue)
+
+    # Override creation method
+    def create(self):
+        # Call super
+        abaqusGui.AFXTextField.create(self)
+        # Set the default value
+        self.setText(self.default_value)
+
+
 # Class for the file selection dialog
 class FileOpenDialog(abaqusGui.FXObject):
-    def __init__(self, file_name_keyword, patterns='*'):
+    def __init__(self, file_name_keyword, msg='Select File', patterns='*'):
+        self.msg = msg
         self.patterns = patterns
         self.pattern_target = abaqusGui.AFXIntTarget(0)
         self.file_name_keyword = file_name_keyword
@@ -270,7 +301,7 @@ class FileOpenDialog(abaqusGui.FXObject):
         abaqusGui.FXMAPFUNC(self, abaqusGui.SEL_COMMAND, abaqusGui.AFXMode.ID_ACTIVATE, FileOpenDialog.on_message)
 
     def on_message(self, sender, sel, ptr):
-        file_dialog = abaqusGui.AFXFileSelectorDialog(abaqusGui.getAFXApp().getAFXMainWindow(), 'Select Stress Script',
+        file_dialog = abaqusGui.AFXFileSelectorDialog(abaqusGui.getAFXApp().getAFXMainWindow(), self.msg,
                                                       self.file_name_keyword, self.read_only_keyword,
                                                       abaqusGui.AFXSELECTFILE_EXISTING,
                                                       self.patterns, self.pattern_target)

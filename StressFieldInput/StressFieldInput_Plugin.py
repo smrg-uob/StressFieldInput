@@ -26,7 +26,7 @@ class Plugin(abaqusGui.AFXForm):
         # Define the run plugin command with substitution
         self.cmd_substitution = abaqusGui.AFXGuiCommand(mode=self, method='stress_field_input_substitution',
                                                         objectName='StressFieldInput_Kernel', registerQuery=True)
-        # Dummy command
+        # Dummy command for the common keywords
         self.cmd_dummy = abaqusGui.AFXGuiCommand(mode=self, method='', objectName='', registerQuery=False)
         # Store the methods
         self.methods = [
@@ -51,9 +51,10 @@ class Plugin(abaqusGui.AFXForm):
             self.cmd_scaling, 'stress_scale_counts', True, 1, False
         )
         self.kw_scale_min = abaqusGui.AFXFloatKeyword(
-            self.cmd_scaling, 'stress_scale_min', True, 1)
+            self.cmd_scaling, 'stress_scale_min', True, 1.0
+        )
         self.kw_scale_max = abaqusGui.AFXFloatKeyword(
-            self.cmd_scaling, 'stress_scale_max', True, 1
+            self.cmd_scaling, 'stress_scale_max', True, 1.0
         )
         self.kw_stress_script_scaling = abaqusGui.AFXStringKeyword(
             self.cmd_scaling, 'stress_script', True, ''
