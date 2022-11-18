@@ -106,11 +106,12 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         self.txt_scale_min = abaqusGui.AFXTextField(p=self.aligner_scaling, ncols=widget_width, labelText='Scale Min',
                                                     tgt=form.kw_scale_min, sel=0,
                                                     opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y)
-        self.txt_scale_min.setText('1')
+        self.txt_scale_min.setText('1.0')
         # Text box for the maximum stress value scale
         self.txt_scale_max = abaqusGui.AFXTextField(p=self.aligner_scaling, ncols=widget_width, labelText='Scale Max',
                                                     tgt=form.kw_scale_max, sel=0,
                                                     opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y)
+        self.txt_scale_max.setText('1.0')
         # Check box to run the jobs
         self.cbx_run_jobs = abaqusGui.FXCheckButton(p=self.tab_frame_scaling, text='Run Jobs',
                                                     tgt=form.kw_run_jobs, sel=0)
@@ -175,6 +176,8 @@ class PluginDialog(abaqusGui.AFXDataDialog):
             self.txt_max_error.disable()
             # Update the action button state
             self.update_widget_states()
+            # Switch the mode on the form
+            self.form.set_method_scaling()
         elif abaqusGui.SELID(sel) == self.ID_SUBST:
             # Toggle check boxes
             self.cbx_scaling.setCheck(False)
@@ -191,6 +194,8 @@ class PluginDialog(abaqusGui.AFXDataDialog):
             self.txt_max_error.enable()
             # Update the action button state
             self.update_widget_states()
+            # Switch the mode on the form
+            self.form.set_method_substitution()
 
     # callback method for when the user selects a new slave
     def on_job_selected(self):

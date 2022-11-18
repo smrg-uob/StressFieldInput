@@ -41,6 +41,7 @@ def stress_field_input_scaling(default_job, stress_scale_counts, stress_scale_mi
 
 # Main method which runs the code with the substitution approach
 def stress_field_input_substitution(default_job, max_it, max_dev, max_err, stress_script, error_script):
+    # TODO
     pass
 
 

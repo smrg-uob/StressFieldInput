@@ -18,6 +18,8 @@ class Plugin(abaqusGui.AFXForm):
     def __init__(self, owner):
         # Call super constructor
         abaqusGui.AFXForm.__init__(self, owner)
+        # Define an integer for the current method
+        self.method = 0
         # Define the run plugin command with scaling
         self.cmd_scaling = abaqusGui.AFXGuiCommand(mode=self, method='stress_field_input_scaling',
                                                    objectName='StressFieldInput_Kernel', registerQuery=True)
@@ -26,6 +28,11 @@ class Plugin(abaqusGui.AFXForm):
                                                         objectName='StressFieldInput_Kernel', registerQuery=True)
         # Dummy command
         self.cmd_dummy = abaqusGui.AFXGuiCommand(mode=self, method='', objectName='', registerQuery=False)
+        # Store the methods
+        self.methods = [
+            self.cmd_scaling,
+            self.cmd_substitution
+        ]
         # Define the common keywords for the commands
         self.kw_def_job = CallBackStringKeyword(
             self.cmd_dummy, 'default_job', True, ''
@@ -82,6 +89,20 @@ class Plugin(abaqusGui.AFXForm):
         # Add callback to the job keyword
         self.kw_def_job.add_callback(self.update_default_job)
 
+    def get_method(self):
+        if 0 <= self.method < len(self.methods):
+            return self.methods[self.method]
+        return None
+
+    def set_method(self, value):
+        self.method = value
+
+    def set_method_scaling(self):
+        self.set_method(0)
+
+    def set_method_substitution(self):
+        self.set_method(1)
+
     def update_default_job(self, value):
         self.kw_def_job_scaling.setValue(value)
         self.kw_def_job_substitution.setValue(value)
@@ -123,6 +144,36 @@ class Plugin(abaqusGui.AFXForm):
     def getLoopDialog(self):
         # simply forward to the general dialog selection method
         return self.get_next_dialog()
+
+    # Override from AFXForm to perform custom checks, return true to continue the code flow
+    def doCustomChecks(self):
+        # We will use this method to control what command is to be issued
+        method = self.get_method()
+        if method is not None:
+            issue_command(method)
+        return True
+
+    # Override to verify the keyword values in the inner loop, return true to continue the code flow
+    def verifyCurrentKeywordValues(self):
+        # Return true to continue
+        return True
+
+    # Override to verify the keyword values in the outer loop, return true to continue the code flow
+    def verifyKeywordValues(self):
+        # Return true to continue
+        return True
+
+    # Override from AFXProcedure to perform custom tasks
+    def doCustomTasks(self):
+        pass
+
+    # Override to prevent the automatic flow from issuing commands
+    def issueCommands(self, writeToReplay, writeToJournal):
+        pass
+
+    # Method override
+    def okToCancel(self):
+        return False
 
 
 # Wrapper class to provide callbacks for when the keyword changes
