@@ -7,8 +7,10 @@ class PluginDialog(abaqusGui.AFXDataDialog):
 
     # id values, useful for commands between widgets
     [
-        ID_JOB
-    ] = range(abaqusGui.AFXToolsetGui.ID_LAST, abaqusGui.AFXToolsetGui.ID_LAST+1)
+        ID_JOB,
+        ID_SCALING,
+        ID_SUBST
+    ] = range(abaqusGui.AFXToolsetGui.ID_LAST, abaqusGui.AFXToolsetGui.ID_LAST + 3)
 
     # constructor
     def __init__(self, form, step):
@@ -19,6 +21,8 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         self.form = form
         # Define command map # Define command map
         abaqusGui.FXMAPFUNC(self, abaqusGui.SEL_COMMAND, self.ID_JOB, PluginDialog.on_message)
+        abaqusGui.FXMAPFUNC(self, abaqusGui.SEL_COMMAND, self.ID_SCALING, PluginDialog.on_message)
+        abaqusGui.FXMAPFUNC(self, abaqusGui.SEL_COMMAND, self.ID_SUBST, PluginDialog.on_message)
         # Configure apply button: run the code (issue commands)
         apply_btn = self.getActionButton(self.ID_CLICKED_APPLY)
         apply_btn.setText('Run')
@@ -30,13 +34,11 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         frame_1 = abaqusGui.FXHorizontalFrame(p=self)
         # Child vertical frame 1
         frame_1_1 = abaqusGui.FXVerticalFrame(p=frame_1)
-        # Aligner
-        aligner = abaqusGui.AFXVerticalAligner(p=frame_1_1)
         # Define the width of the input widgets
         widget_width = 12
         # Add combo box to select the job and populate it with valid jobs
         job_names = mdb.jobs.keys()
-        self.cbx_job = abaqusGui.AFXComboBox(p=aligner, ncols=widget_width, nvis=0, text='Default Job',
+        self.cbx_job = abaqusGui.AFXComboBox(p=frame_1_1, ncols=widget_width + 2, nvis=0, text='Default Job',
                                              tgt=self, sel=self.ID_JOB)
         index = 0
         for job_name in job_names:
@@ -48,27 +50,12 @@ class PluginDialog(abaqusGui.AFXDataDialog):
             if hasattr(job, 'model'):
                 self.cbx_job.appendItem(text=job_name, sel=index)
                 index = index + 1
-        # Text box for the number of stress value scales
-        self.txt_scale_counts = abaqusGui.AFXTextField(p=aligner, ncols=widget_width, labelText='Scale Count',
-                                                       tgt=form.kw_scale_counts, sel=0,
-                                                       opts=abaqusGui.AFXTEXTFIELD_INTEGER | abaqusGui.LAYOUT_CENTER_Y)
-        self.txt_scale_counts.setText('1')
-        # Text box for the minimum stress value scale
-        self.txt_scale_min = abaqusGui.AFXTextField(p=aligner, ncols=widget_width, labelText='Scale Min',
-                                                    tgt=form.kw_scale_min, sel=0,
-                                                    opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y)
-        self.txt_scale_min.setText('1')
-        # Text box for the maximum stress value scale
-        self.txt_scale_max = abaqusGui.AFXTextField(p=aligner, ncols=widget_width, labelText='Scale Max',
-                                                    tgt=form.kw_scale_max, sel=0,
-                                                    opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y)
-        self.txt_scale_max.setText('1')
         # Widgets to load stress script
         self.lbl_stress_script = abaqusGui.FXLabel(p=frame_1_1, text='Stress Script')
         file_handler_stress = FileOpenDialog(form.kw_stress_script, '*.py')
         frame_file_text_1 = abaqusGui.FXHorizontalFrame(p=frame_1_1)
         frame_file_text_1.setSelector(99)
-        self.txt_stress_script = abaqusGui.AFXTextField(p=frame_file_text_1, ncols=widget_width + 7, labelText='',
+        self.txt_stress_script = abaqusGui.AFXTextField(p=frame_file_text_1, ncols=widget_width + 9, labelText='',
                                                         tgt=form.kw_stress_script, sel=0,
                                                         opts=abaqusGui.AFXTEXTFIELD_STRING | abaqusGui.LAYOUT_CENTER_Y)
         icon = abaqusGui.afxGetIcon('fileOpen', abaqusGui.AFX_ICON_SMALL)
@@ -81,7 +68,7 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         file_handler_error = FileOpenDialog(form.kw_error_script, '*.py')
         frame_file_text_2 = abaqusGui.FXHorizontalFrame(p=frame_1_1)
         frame_file_text_2.setSelector(99)
-        self.txt_error_script = abaqusGui.AFXTextField(p=frame_file_text_2, ncols=widget_width + 7, labelText='',
+        self.txt_error_script = abaqusGui.AFXTextField(p=frame_file_text_2, ncols=widget_width + 9, labelText='',
                                                        tgt=form.kw_error_script, sel=0,
                                                        opts=abaqusGui.AFXTEXTFIELD_STRING | abaqusGui.LAYOUT_CENTER_Y)
         icon = abaqusGui.afxGetIcon('fileOpen', abaqusGui.AFX_ICON_SMALL)
@@ -89,10 +76,77 @@ class PluginDialog(abaqusGui.AFXDataDialog):
                            tgt=file_handler_error, sel=abaqusGui.AFXMode.ID_ACTIVATE,
                            opts=abaqusGui.BUTTON_NORMAL | abaqusGui.LAYOUT_CENTER_Y,
                            x=0, y=0, w=0, h=0, pl=1, pr=1, pt=1, pb=1)
+        # Tab book for the two options
+        self.tabs = abaqusGui.FXTabBook(p=frame_1_1, tgt=None, sel=0, opts=abaqusGui.TABBOOK_NORMAL, x=0, y=0, w=0, h=0,
+                                        pl=abaqusGui.DEFAULT_SPACING, pr=abaqusGui.DEFAULT_SPACING,
+                                        pt=abaqusGui.DEFAULT_SPACING, pb=abaqusGui.DEFAULT_SPACING)
+        # Tab for the scaling approach
+        self.tab_scaling = abaqusGui.FXTabItem(p=self.tabs, text='Scaling', ic=None, opts=abaqusGui.TAB_TOP_NORMAL,
+                                               x=0, y=0, w=0, h=0, pl=6, pr=6,
+                                               pt=abaqusGui.DEFAULT_PAD, pb=abaqusGui.DEFAULT_PAD)
+        self.tab_frame_scaling = abaqusGui.FXVerticalFrame(p=self.tabs, opts=abaqusGui.FRAME_RAISED
+                                                                             | abaqusGui.FRAME_THICK
+                                                                             | abaqusGui.LAYOUT_FILL_X,
+                                                           x=0, y=0, w=0, h=0,
+                                                           pl=abaqusGui.DEFAULT_SPACING, pr=abaqusGui.DEFAULT_SPACING,
+                                                           pt=abaqusGui.DEFAULT_SPACING, pb=abaqusGui.DEFAULT_SPACING,
+                                                           hs=abaqusGui.DEFAULT_SPACING, vs=abaqusGui.DEFAULT_SPACING)
+        # Scaling checkbox
+        self.cbx_scaling = abaqusGui.FXCheckButton(p=self.tab_frame_scaling, text='Scaling',
+                                                   tgt=self, sel=self.ID_SCALING)
+        self.cbx_scaling.setCheck(True)
+        # Aligner
+        self.aligner_scaling = abaqusGui.AFXVerticalAligner(p=self.tab_frame_scaling)
+        # Text box for the number of stress value scales
+        self.txt_scale_counts = abaqusGui.AFXTextField(p=self.aligner_scaling, ncols=widget_width,
+                                                       labelText='Scale Count', tgt=form.kw_scale_counts, sel=0,
+                                                       opts=abaqusGui.AFXTEXTFIELD_INTEGER | abaqusGui.LAYOUT_CENTER_Y)
+        self.txt_scale_counts.setText('1')
+        # Text box for the minimum stress value scale
+        self.txt_scale_min = abaqusGui.AFXTextField(p=self.aligner_scaling, ncols=widget_width, labelText='Scale Min',
+                                                    tgt=form.kw_scale_min, sel=0,
+                                                    opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y)
+        self.txt_scale_min.setText('1')
+        # Text box for the maximum stress value scale
+        self.txt_scale_max = abaqusGui.AFXTextField(p=self.aligner_scaling, ncols=widget_width, labelText='Scale Max',
+                                                    tgt=form.kw_scale_max, sel=0,
+                                                    opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y)
         # Check box to run the jobs
-        self.cbx_run_jobs = abaqusGui.FXCheckButton(p=frame_1_1, text='Run Jobs', tgt=form.kw_run_jobs, sel=0)
+        self.cbx_run_jobs = abaqusGui.FXCheckButton(p=self.tab_frame_scaling, text='Run Jobs',
+                                                    tgt=form.kw_run_jobs, sel=0)
         # Check box to iterate with the error script
-        self.cbx_iterate = abaqusGui.FXCheckButton(p=frame_1_1, text='Iterate', tgt=form.kw_iterate, sel=0)
+        self.cbx_iterate = abaqusGui.FXCheckButton(p=self.tab_frame_scaling, text='Iterate',
+                                                   tgt=form.kw_iterate, sel=0)
+        # Tab for the substitution approach
+        self.tab_subst = abaqusGui.FXTabItem(p=self.tabs, text='Substitution', ic=None,
+                                             opts=abaqusGui.TAB_TOP_NORMAL, x=0, y=0, w=0, h=0, pl=6, pr=6,
+                                             pt=abaqusGui.DEFAULT_PAD, pb=abaqusGui.DEFAULT_PAD)
+        self.tab_frame_subst = abaqusGui.FXVerticalFrame(p=self.tabs, opts=abaqusGui.FRAME_RAISED
+                                                                            | abaqusGui.FRAME_THICK
+                                                                            | abaqusGui.LAYOUT_FILL_X,
+                                                         x=0, y=0, w=0, h=0,
+                                                         pl=abaqusGui.DEFAULT_SPACING, pr=abaqusGui.DEFAULT_SPACING,
+                                                         pt=abaqusGui.DEFAULT_SPACING, pb=abaqusGui.DEFAULT_SPACING,
+                                                         hs=abaqusGui.DEFAULT_SPACING, vs=abaqusGui.DEFAULT_SPACING)
+        # Substitution checkbox
+        self.cbx_subst = abaqusGui.FXCheckButton(p=self.tab_frame_subst, text='Substitution',
+                                                 tgt=self, sel=self.ID_SUBST)
+        self.cbx_subst.setCheck(False)
+        # Aligner
+        self.aligner_subst = abaqusGui.AFXVerticalAligner(p=self.tab_frame_subst)
+        # Text box for the number of iterations
+        self.txt_max_it = abaqusGui.AFXTextField(p=self.aligner_subst, ncols=8, labelText='Max Iterations',
+                                                 tgt=form.kw_max_it, sel=0)
+        self.txt_max_it.disable()
+        # Text box for the maximum deviation
+        self.txt_max_dev = abaqusGui.AFXTextField(p=self.aligner_subst, ncols=8, labelText='Deviation',
+                                                  tgt=form.kw_dev, sel=0)
+        self.txt_max_dev.disable()
+        # Text box for the maximum deviation
+        self.txt_max_error = abaqusGui.AFXTextField(p=self.aligner_subst, ncols=8, labelText='Error Threshold',
+                                                    tgt=form.kw_err, sel=0)
+        self.txt_max_error.disable()
+        self.txt_scale_max.setText('1')
         # Set currently selected items to their defaults (to force an update on first opening of the GUI)
         self.currentJob = -1
         self.currentStressScript = ''
@@ -105,6 +159,38 @@ class PluginDialog(abaqusGui.AFXDataDialog):
     def on_message(self, sender, sel, ptr):
         if abaqusGui.SELID(sel) == self.ID_JOB:
             self.on_job_selected()
+        elif abaqusGui.SELID(sel) == self.ID_SCALING:
+            # Toggle check boxes
+            self.cbx_subst.setCheck(False)
+            self.cbx_scaling.setCheck(True)
+            # Enable scaling widgets
+            self.txt_scale_counts.enable()
+            self.txt_scale_min.enable()
+            self.txt_scale_max.enable()
+            self.cbx_run_jobs.enable()
+            self.cbx_iterate.enable()
+            # Disable substitution widgets
+            self.txt_max_it.disable()
+            self.txt_max_dev.disable()
+            self.txt_max_error.disable()
+            # Update the action button state
+            self.update_widget_states()
+        elif abaqusGui.SELID(sel) == self.ID_SUBST:
+            # Toggle check boxes
+            self.cbx_scaling.setCheck(False)
+            self.cbx_subst.setCheck(True)
+            # Disable scaling widgets
+            self.txt_scale_counts.disable()
+            self.txt_scale_min.disable()
+            self.txt_scale_max.disable()
+            self.cbx_run_jobs.disable()
+            self.cbx_iterate.disable()
+            # Enable substitution widgets
+            self.txt_max_it.enable()
+            self.txt_max_dev.enable()
+            self.txt_max_error.enable()
+            # Update the action button state
+            self.update_widget_states()
 
     # callback method for when the user selects a new slave
     def on_job_selected(self):
@@ -155,7 +241,10 @@ class PluginDialog(abaqusGui.AFXDataDialog):
             self.form.kw_iterate.setValue(False)
             self.cbx_iterate.disable()
         else:
-            self.cbx_iterate.enable()
+            if self.cbx_scaling.getCheck():
+                self.cbx_iterate.enable()
+            else:
+                self.cbx_iterate.disable()
 
     # Override from parent class
     def processUpdates(self):

@@ -6,9 +6,9 @@ from MeshData import MeshData
 from MeshElementData import MeshElementData
 
 
-# Main method which runs the code
-def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_max,
-               stress_script, error_script, run_jobs, iterate):
+# Main method which runs the code with the scaling approach
+def stress_field_input_scaling(default_job, stress_scale_counts, stress_scale_min, stress_scale_max,
+                               stress_script, error_script, run_jobs, iterate):
     # Feedback message
     print('=== STRESS INPUT START ===')
     # Run checks
@@ -37,6 +37,11 @@ def run_plugin(default_job, stress_scale_counts, stress_scale_min, stress_scale_
         output_scales_and_error(stress_scales, errors)
     # Feedback message
     print_exit_message()
+
+
+# Main method which runs the code with the substitution approach
+def stress_field_input_substitution(default_job, max_it, max_dev, max_err, stress_script, error_script):
+    pass
 
 
 # Prints the end feedback message
