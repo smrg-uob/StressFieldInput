@@ -11,8 +11,9 @@ def stress_field_input_scaling(default_job, stress_scale_counts, stress_scale_mi
                                stress_script, error_script, run_jobs, iterate):
     # Feedback message
     print('=== STRESS INPUT START ===')
+    print('> Running stress scaling approach')
     # Run checks
-    if run_checks(
+    if run_scaling_checks(
             default_job, stress_scale_counts, stress_scale_min, stress_scale_max, stress_script, run_jobs, iterate):
         # Characterize the mesh
         mesh_data = characterize_mesh(default_job, stress_script)
@@ -29,9 +30,9 @@ def stress_field_input_scaling(default_job, stress_scale_counts, stress_scale_mi
         print('> Creating job definition')
         job_builder = JobBuilder(default_job, mesh_data)
         # Run the logic
-        print('> Running job logic')
-        stress_scales, errors = run_logic(job_builder, stress_scale_counts, stress_scale_min, stress_scale_max,
-                                          run_jobs, error_script, iterate)
+        print('> Running scaling logic')
+        stress_scales, errors = run_scaling_logic(job_builder, stress_scale_counts, stress_scale_min, stress_scale_max,
+                                                  run_jobs, error_script, iterate)
         print('-> Job logic completed')
         # Output the results
         output_scales_and_error(stress_scales, errors)
@@ -41,8 +42,34 @@ def stress_field_input_scaling(default_job, stress_scale_counts, stress_scale_mi
 
 # Main method which runs the code with the substitution approach
 def stress_field_input_substitution(default_job, max_it, max_dev, max_err, stress_script, error_script):
-    # TODO
-    pass
+    # Feedback message
+    print('=== STRESS INPUT START ===')
+    print('> Running stress substitution approach')
+    # Run checks
+    if run_subst_checks(
+            default_job, max_it, max_dev, max_err, stress_script):
+        # Characterize the mesh
+        mesh_data = characterize_mesh(default_job, stress_script)
+        # Do not continue if there is no mesh
+        if mesh_data is None:
+            print_exit_message()
+            return
+        # Calculate the stresses
+        mesh_data = define_stresses(mesh_data, stress_script)
+        if mesh_data is None:
+            print_exit_message()
+            return
+        # Create a job builder:
+        print('> Creating job definition')
+        job_builder = JobBuilder(default_job, mesh_data)
+        # Run the logic
+        print('> Running substitution logic')
+        stress_scales, errors = run_subst_logic(job_builder, max_it, max_dev, max_err, stress_script, error_script)
+        print('-> Job logic completed')
+        # Output the results
+        output_scales_and_error(stress_scales, errors)
+    # Feedback message
+    print_exit_message()
 
 
 # Prints the end feedback message
@@ -50,8 +77,8 @@ def print_exit_message():
     print('=== STRESS INPUT FINISHED ===')
 
 
-# Method checking if all prerequisites are met before running the code
-def run_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_max, stress_script, run_jobs, iterate):
+# Method checking if all prerequisites are met before running the scaling code
+def run_scaling_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_max, stress_script, run_jobs, iterate):
     # Feedback message
     print('> Performing checks')
     print('-> Checking inputs and MDB')
@@ -78,6 +105,43 @@ def run_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_
     if iterate and stress_scale_counts < 3:
         print('-> At least 2 scale counts are needed to start iterating')
         return False
+    # Run common checks
+    if run_common_checks(default_job, stress_script):
+        # All checks passed
+        print('-> Checks passed')
+        return True
+    else:
+        return False
+
+
+# Method checking if all prerequisites are met before running the substitution code
+def run_subst_checks(default_job, max_it, max_dev, max_err, stress_script):
+    # Feedback message
+    print('> Performing checks')
+    print('-> Checking inputs and MDB')
+    # Check if max iterations is at least 1
+    if max_it < 1:
+        print('-> Invalid maximum iterations, should be at least 1')
+        return False
+    # Check if max deviation is positive
+    if max_dev <= 0:
+        print('-> Maximum deviation should be larger than 0')
+        return False
+    # Check if max error is positive
+    if max_err <= 0:
+        print('-> Maximum deviation should be larger than 0')
+        return False
+    # Run common checks
+    if run_common_checks(default_job, stress_script):
+        # All checks passed
+        print('-> Checks passed')
+        return True
+    else:
+        return False
+
+
+# Method checking if all common prerequisites are met
+def run_common_checks(default_job, stress_script):
     # Check if there is an active model
     if len(abaqus.mdb.models.keys()) <= 0:
         print('-> No active model')
@@ -99,9 +163,6 @@ def run_checks(default_job, stress_scale_counts, stress_scale_min, stress_scale_
     if not check_stress_script(stress_script):
         print('-> Stress script invalid')
         return False
-    # All checks passed
-    print('-> Checks passed')
-    return True
 
 
 # Method to check if the stress script has been properly defined
@@ -128,8 +189,9 @@ def check_stress_script(stress_script):
     # Check the method arguments
     import inspect
     args = inspect.getargspec(func)
-    if len(args) != 4:
-        print('--> Invalid arguments for "calculate_stress"; should have precisely 4: "part", "x", "y", and "z".')
+    if len(args) != 5:
+        print('--> Invalid arguments for "calculate_stress"; should have precisely 5:'
+              ' "part", "x", "y", "z", and "prev_stress".')
     return True
 
 
@@ -240,6 +302,8 @@ def define_stresses(mesh_data, stress_script):
         print('---> Stress script threw an error')
         print(traceback.format_exc())
         return None
+    # Create a default stress state
+    default_stress = [0, 0, 0, 0, 0, 0]
     # Iterate over part instances
     for part_index in np.arange(0, len(mesh_data)):
         mesh_data_part = mesh_data[part_index]
@@ -253,7 +317,7 @@ def define_stresses(mesh_data, stress_script):
             y = stress_set.get_y()
             z = stress_set.get_z()
             try:
-                stress = calculate_stress(instance_name, x, y, z)
+                stress = calculate_stress(instance_name, x, y, z, default_stress)
             except Exception:
                 # If stress script fails, print error and default to None
                 coords = '(' + str(x) + ', ' + str(y) + ', ' + str(z) + ')'
@@ -265,8 +329,9 @@ def define_stresses(mesh_data, stress_script):
     return mesh_data
 
 
-# Run plugin logic
-def run_logic(job_builder, stress_scale_counts, stress_scale_min, stress_scale_max, run_jobs, error_script, iterate):
+# Run scaling logic
+def run_scaling_logic(job_builder, stress_scale_counts, stress_scale_min, stress_scale_max, run_jobs, error_script,
+                      iterate):
     # Initialize empty arrays for the jobs, stress scales and errors
     jobs = [None] * stress_scale_counts
     stress_scales = np.zeros(stress_scale_counts)
@@ -386,9 +451,17 @@ def run_logic(job_builder, stress_scale_counts, stress_scale_min, stress_scale_m
         return stress_scales, None
 
 
+# Run substitution logic
+def run_subst_logic(job_builder, max_it, max_dev, max_err, stress_script, error_script):
+    deviations = np.zeros(max_it)
+    errors = np.zeros(max_it)
+    # TODO
+    return None, None
+
+
 # Writes stress scales and errors to file
 def output_scales_and_error(stress_scales, errors):
-    if errors is not None:
+    if stress_scales is not None and errors is not None:
         # Print to console
         print('--> Stress scales:')
         print(stress_scales)
