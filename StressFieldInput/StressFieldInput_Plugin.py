@@ -98,12 +98,6 @@ class Plugin(abaqusGui.AFXForm):
     def set_method(self, value):
         self.method = value
 
-    def set_method_scaling(self):
-        self.set_method(0)
-
-    def set_method_substitution(self):
-        self.set_method(1)
-
     def update_default_job(self, value):
         self.kw_def_job_scaling.setValue(value)
         self.kw_def_job_substitution.setValue(value)

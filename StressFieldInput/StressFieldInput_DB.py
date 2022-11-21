@@ -8,9 +8,14 @@ class PluginDialog(abaqusGui.AFXDataDialog):
     # id values, useful for commands between widgets
     [
         ID_JOB,
-        ID_SCALING,
-        ID_SUBST
-    ] = range(abaqusGui.AFXToolsetGui.ID_LAST, abaqusGui.AFXToolsetGui.ID_LAST + 3)
+        ID_TAB,
+    ] = range(abaqusGui.AFXToolsetGui.ID_LAST, abaqusGui.AFXToolsetGui.ID_LAST + 2)
+
+    # Stress input methods
+    stress_methods = [
+        'Scaling',
+        'Substitution'
+    ]
 
     # constructor
     def __init__(self, form, step):
@@ -21,8 +26,7 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         self.form = form
         # Define command map # Define command map
         abaqusGui.FXMAPFUNC(self, abaqusGui.SEL_COMMAND, self.ID_JOB, PluginDialog.on_message)
-        abaqusGui.FXMAPFUNC(self, abaqusGui.SEL_COMMAND, self.ID_SCALING, PluginDialog.on_message)
-        abaqusGui.FXMAPFUNC(self, abaqusGui.SEL_COMMAND, self.ID_SUBST, PluginDialog.on_message)
+        abaqusGui.FXMAPFUNC(self, abaqusGui.SEL_COMMAND, self.ID_TAB, PluginDialog.on_message)
         # Configure apply button: run the code (issue commands)
         apply_btn = self.getActionButton(self.ID_CLICKED_APPLY)
         apply_btn.setText('Run')
@@ -77,7 +81,8 @@ class PluginDialog(abaqusGui.AFXDataDialog):
                            opts=abaqusGui.BUTTON_NORMAL | abaqusGui.LAYOUT_CENTER_Y,
                            x=0, y=0, w=0, h=0, pl=1, pr=1, pt=1, pb=1)
         # Tab book for the two options
-        self.tabs = abaqusGui.FXTabBook(p=frame_1_1, tgt=None, sel=0, opts=abaqusGui.TABBOOK_NORMAL, x=0, y=0, w=0, h=0,
+        self.tabs = abaqusGui.FXTabBook(p=frame_1_1, tgt=self, sel=self.ID_TAB, opts=abaqusGui.TABBOOK_NORMAL,
+                                        x=0, y=0, w=0, h=0,
                                         pl=abaqusGui.DEFAULT_SPACING, pr=abaqusGui.DEFAULT_SPACING,
                                         pt=abaqusGui.DEFAULT_SPACING, pb=abaqusGui.DEFAULT_SPACING)
         # Tab for the scaling approach
@@ -91,10 +96,6 @@ class PluginDialog(abaqusGui.AFXDataDialog):
                                                            pl=abaqusGui.DEFAULT_SPACING, pr=abaqusGui.DEFAULT_SPACING,
                                                            pt=abaqusGui.DEFAULT_SPACING, pb=abaqusGui.DEFAULT_SPACING,
                                                            hs=abaqusGui.DEFAULT_SPACING, vs=abaqusGui.DEFAULT_SPACING)
-        # Scaling checkbox
-        self.cbx_scaling = abaqusGui.FXCheckButton(p=self.tab_frame_scaling, text='Scaling',
-                                                   tgt=self, sel=self.ID_SCALING)
-        self.cbx_scaling.setCheck(True)
         # Aligner
         self.aligner_scaling = abaqusGui.AFXVerticalAligner(p=self.tab_frame_scaling)
         # Text box for the number of stress value scales
@@ -132,10 +133,6 @@ class PluginDialog(abaqusGui.AFXDataDialog):
                                                          pl=abaqusGui.DEFAULT_SPACING, pr=abaqusGui.DEFAULT_SPACING,
                                                          pt=abaqusGui.DEFAULT_SPACING, pb=abaqusGui.DEFAULT_SPACING,
                                                          hs=abaqusGui.DEFAULT_SPACING, vs=abaqusGui.DEFAULT_SPACING)
-        # Substitution checkbox
-        self.cbx_subst = abaqusGui.FXCheckButton(p=self.tab_frame_subst, text='Substitution',
-                                                 tgt=self, sel=self.ID_SUBST)
-        self.cbx_subst.setCheck(False)
         # Aligner
         self.aligner_subst = abaqusGui.AFXVerticalAligner(p=self.tab_frame_subst)
         # Text box for the number of iterations
@@ -144,21 +141,32 @@ class PluginDialog(abaqusGui.AFXDataDialog):
                                                opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y,
                                                defaultValue='1')
         self.form.kw_max_it.setValue(1)
-        self.txt_max_it.disable()
         # Text box for the maximum deviation
         self.txt_max_dev = TextFieldWithDefault(p=self.aligner_subst, ncols=8, labelText='Deviation',
                                                 tgt=form.kw_dev, sel=0,
                                                 opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y,
                                                 defaultValue='0.001')
         self.form.kw_dev.setValue(0.001)
-        self.txt_max_dev.disable()
         # Text box for the maximum deviation
         self.txt_max_error = TextFieldWithDefault(p=self.aligner_subst, ncols=8, labelText='Error Threshold',
                                                   tgt=form.kw_err, sel=0,
                                                   opts=abaqusGui.AFXTEXTFIELD_FLOAT | abaqusGui.LAYOUT_CENTER_Y,
                                                   defaultValue='0.001')
         self.form.kw_err.setValue(0.001)
-        self.txt_max_error.disable()
+        # Text box for the stress input method
+        self.txt_stress_method = abaqusGui.AFXTextField(p=frame_1_1, ncols=widget_width, labelText='Method',
+                                                        tgt=None, sel=0,
+                                                        opts=abaqusGui.AFXTEXTFIELD_STRING | abaqusGui.LAYOUT_CENTER_Y)
+        self.txt_stress_method.setText(self.stress_methods[0])
+        self.txt_stress_method.disable()
+        # Dummy check box to run the jobs
+        self.cbx_run_jobs_dummy = abaqusGui.FXCheckButton(p=self.tab_frame_subst, text='Run Jobs', tgt=None, sel=0)
+        self.cbx_run_jobs_dummy.setCheck(True)
+        self.cbx_run_jobs_dummy.disable()
+        # Dummy check box to iterate with the error script
+        self.cbx_iterate_dummy = abaqusGui.FXCheckButton(p=self.tab_frame_subst, text='Iterate', tgt=None, sel=0)
+        self.cbx_iterate_dummy.setCheck(True)
+        self.cbx_iterate_dummy.disable()
         # Set currently selected items to their defaults (to force an update on first opening of the GUI)
         self.currentJob = -1
         self.currentStressScript = ''
@@ -171,42 +179,12 @@ class PluginDialog(abaqusGui.AFXDataDialog):
     def on_message(self, sender, sel, ptr):
         if abaqusGui.SELID(sel) == self.ID_JOB:
             self.on_job_selected()
-        elif abaqusGui.SELID(sel) == self.ID_SCALING:
-            # Toggle check boxes
-            self.cbx_subst.setCheck(False)
-            self.cbx_scaling.setCheck(True)
-            # Enable scaling widgets
-            self.txt_scale_counts.enable()
-            self.txt_scale_min.enable()
-            self.txt_scale_max.enable()
-            self.cbx_run_jobs.enable()
-            self.cbx_iterate.enable()
-            # Disable substitution widgets
-            self.txt_max_it.disable()
-            self.txt_max_dev.disable()
-            self.txt_max_error.disable()
-            # Update the action button state
-            self.update_widget_states()
-            # Switch the mode on the form
-            self.form.set_method_scaling()
-        elif abaqusGui.SELID(sel) == self.ID_SUBST:
-            # Toggle check boxes
-            self.cbx_scaling.setCheck(False)
-            self.cbx_subst.setCheck(True)
-            # Disable scaling widgets
-            self.txt_scale_counts.disable()
-            self.txt_scale_min.disable()
-            self.txt_scale_max.disable()
-            self.cbx_run_jobs.disable()
-            self.cbx_iterate.disable()
-            # Enable substitution widgets
-            self.txt_max_it.enable()
-            self.txt_max_dev.enable()
-            self.txt_max_error.enable()
-            # Update the action button state
-            self.update_widget_states()
-            # Switch the mode on the form
-            self.form.set_method_substitution()
+        elif abaqusGui.SELID(sel) == self.ID_TAB:
+            tab_index = self.tabs.getCurrent()
+            self.form.set_method(tab_index)
+            self.txt_stress_method.enable()
+            self.txt_stress_method.setText(self.stress_methods[tab_index])
+            self.txt_stress_method.disable()
 
     # callback method for when the user selects a new slave
     def on_job_selected(self):
@@ -256,11 +234,10 @@ class PluginDialog(abaqusGui.AFXDataDialog):
         if self.currentErrorScript == '':
             self.form.kw_iterate.setValue(False)
             self.cbx_iterate.disable()
+            self.txt_max_error.disable()
         else:
-            if self.cbx_scaling.getCheck():
-                self.cbx_iterate.enable()
-            else:
-                self.cbx_iterate.disable()
+            self.cbx_iterate.enable()
+            self.txt_max_error.enable()
 
     # Override from parent class
     def processUpdates(self):
