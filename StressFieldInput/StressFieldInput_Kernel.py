@@ -479,6 +479,15 @@ def run_subst_logic(job_builder, max_it, max_dev, max_err, stress_script, error_
         job.waitForCompletion()
         # open the ODB
         odb = abaqus.session.openOdb(job.name + ".odb", readOnly=True)
+        # Define flag to stop
+        converged = False
+        # Update stresses from odb
+        print('--> Updating stresses from odb')
+        deviations[i] = job_builder.update_stress_from_odb(odb)
+        print('---> Deviation = ' + str(deviations[i]))
+        if deviations[i] < max_dev:
+            print('---> Stress deviation criterion reached')
+            converged = True
         # Calculate the errors
         if run_errors:
             print('--> Calculating error for job ' + str(i + 1) + ' of ' + str(max_it))
@@ -487,18 +496,15 @@ def run_subst_logic(job_builder, max_it, max_dev, max_err, stress_script, error_
                 errors[i] = calculate_error(abaqus.session, odb)
                 print('---> Error = ' + str(errors[i]))
                 if errors[i] <= max_err:
-                    print '---> Error criterion reached, stopping'
-                    break
+                    print '---> Error criterion reached'
+                    converged = True
             except Exception:
                 # If an error script fails, abort
                 print('---> Error script threw an error during calculation')
                 print(traceback.format_exc())
-        # Update stresses from odb
-        print('--> Updating stresses from odb')
-        deviations[i] = job_builder.update_stress_from_odb(odb)
-        print('---> Deviation = ' + str(deviations[i]))
-        if deviations[i] < max_dev:
-            print('---> Stress deviation criterion reached, stopping')
+        # If convergence is reached, stop
+        if converged:
+            print('---> Stopping iteration')
             break
     # Return the deviations and the errors
     return deviations, errors
