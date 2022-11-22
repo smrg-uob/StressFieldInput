@@ -79,7 +79,7 @@ class JobBuilder:
             # Iterate over all stress sets
             for stress_set in mesh_data_part.get_stress_sets():
                 # Fetch element data
-                instance_name = stress_set.get_instance_name()
+                instance_name = stress_set.get_instance_name().upper()  # In the ODB instance names are upper case
                 element_label = stress_set.get_label()
                 # Extract stress values for the element
                 mesh_element = odb.rootAssembly.instances[instance_name].elements[element_label - 1]
@@ -89,7 +89,7 @@ class JobBuilder:
                     continue
                 # Fetch the old and new stress values
                 old_stress = stress_set.get_stress()
-                new_stress = stress_values.data
+                new_stress = stress_values[0].data
                 # Update the stress
                 stress_set.define_stress(
                     [new_stress[0], new_stress[1], new_stress[2], new_stress[3], new_stress[4], new_stress[5]])
