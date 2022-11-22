@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import abaqus
+from abaqusConstants import *
 import numpy as np
 
 
@@ -62,6 +63,49 @@ class JobBuilder:
         # Create job from the input file
         job_name = self.default_job + '_Stress_Input_Scale_' + str(job_name_index)
         return abaqus.mdb.JobFromInputFile(job_name, input_file_name)
+
+    def update_stress_from_odb(self, odb):
+        # Fetch general stress field output at the centre of the elements
+        step = odb.steps[odb.steps.keys()[len(odb.steps.keys()) - 1]]
+        frame = step.frames[len(step.frames) - 1]
+        stress_output = frame.fieldOutputs['S'].getSubset(position=CENTROID)
+        # Define maximum deviation
+        max_dev = 0
+        # Iterate over part instances
+        for part_index in np.arange(0, len(self.mesh_data)):
+            mesh_data_part = self.mesh_data[part_index]
+            if mesh_data_part is None:
+                continue
+            # Iterate over all stress sets
+            for stress_set in mesh_data_part.get_stress_sets():
+                # Fetch element data
+                instance_name = stress_set.get_instance_name()
+                element_label = stress_set.get_label()
+                # Extract stress values for the element
+                mesh_element = odb.rootAssembly.instances[instance_name].elements[element_label - 1]
+                stress_values = stress_output.getSubset(region=mesh_element).values
+                if len(stress_values) != 1:
+                    print('Invalid stress state for element ' + instance_name + '.' + str(element_label))
+                    continue
+                # Fetch the old and new stress values
+                old_stress = stress_set.get_stress()
+                new_stress = stress_values.data
+                # Update the stress
+                stress_set.define_stress(
+                    [new_stress[0], new_stress[1], new_stress[2], new_stress[3], new_stress[4], new_stress[5]])
+                # Calculate and update deviation
+                dev = np.sqrt(
+                    (old_stress[0] - new_stress[0])*(old_stress[0] - new_stress[0])
+                    + (old_stress[1] - new_stress[1]) * (old_stress[1] - new_stress[1])
+                    + (old_stress[2] - new_stress[2]) * (old_stress[2] - new_stress[2])
+                    + (old_stress[3] - new_stress[3]) * (old_stress[3] - new_stress[3])
+                    + (old_stress[4] - new_stress[4]) * (old_stress[4] - new_stress[4])
+                    + (old_stress[5] - new_stress[5]) * (old_stress[5] - new_stress[5])
+                )/6
+                if dev > max_dev:
+                    max_dev = dev
+        # return the deviation
+        return max_dev
 
     # Internal method called on initialization
     def __on_init(self):

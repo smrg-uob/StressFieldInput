@@ -22,6 +22,7 @@ def stress_field_input_scaling(default_job, stress_scale_counts, stress_scale_mi
             print_exit_message()
             return
         # Calculate the stresses
+        print("> Calculating stresses")
         mesh_data = define_stresses(mesh_data, stress_script)
         if mesh_data is None:
             print_exit_message()
@@ -54,20 +55,16 @@ def stress_field_input_substitution(default_job, max_it, max_dev, max_err, stres
         if mesh_data is None:
             print_exit_message()
             return
-        # Calculate the stresses
-        mesh_data = define_stresses(mesh_data, stress_script)
-        if mesh_data is None:
-            print_exit_message()
-            return
         # Create a job builder:
         print('> Creating job definition')
         job_builder = JobBuilder(default_job, mesh_data)
         # Run the logic
         print('> Running substitution logic')
-        stress_scales, errors = run_subst_logic(job_builder, max_it, max_dev, max_err, stress_script, error_script)
-        print('-> Job logic completed')
+        deviations, errors = run_subst_logic(job_builder, max_it, max_dev, max_err, stress_script, error_script)
+        if deviations is not None:
+            print('-> Job logic completed')
         # Output the results
-        output_scales_and_error(stress_scales, errors)
+        output_deviation_and_error(deviations, errors)
     # Feedback message
     print_exit_message()
 
@@ -292,8 +289,6 @@ def characterize_mesh(default_job, stress_script):
 
 # Method to define the stress data
 def define_stresses(mesh_data, stress_script):
-    # Feedback message
-    print("> Calculating stresses")
     # Run the script to enable access to the calculate_stress() method at the current level
     try:
         execfile(stress_script, globals())  # Pass in globals() to load the script's contents to the global dictionary
@@ -302,8 +297,6 @@ def define_stresses(mesh_data, stress_script):
         print('---> Stress script threw an error')
         print(traceback.format_exc())
         return None
-    # Create a default stress state
-    default_stress = [0, 0, 0, 0, 0, 0]
     # Iterate over part instances
     for part_index in np.arange(0, len(mesh_data)):
         mesh_data_part = mesh_data[part_index]
@@ -317,7 +310,7 @@ def define_stresses(mesh_data, stress_script):
             y = stress_set.get_y()
             z = stress_set.get_z()
             try:
-                stress = calculate_stress(instance_name, x, y, z, default_stress)
+                stress = calculate_stress(instance_name, x, y, z, stress_set.get_stress())
             except Exception:
                 # If stress script fails, print error and default to None
                 coords = '(' + str(x) + ', ' + str(y) + ', ' + str(z) + ')'
@@ -354,6 +347,7 @@ def run_scaling_logic(job_builder, stress_scale_counts, stress_scale_min, stress
         # Check if errors can be evaluated
         if not run_errors:
             print('--> Can not iterate without properly defined error script')
+            return None, None
         # Define tracking variables
         current_min_index = -1
         previous_index = -1
@@ -454,9 +448,60 @@ def run_scaling_logic(job_builder, stress_scale_counts, stress_scale_min, stress
 # Run substitution logic
 def run_subst_logic(job_builder, max_it, max_dev, max_err, stress_script, error_script):
     deviations = np.zeros(max_it)
-    errors = np.zeros(max_it)
-    # TODO
-    return None, None
+    errors = None
+    # Check if error calculation is required
+    run_errors = (error_script is not None) and (error_script != '')
+    # If error calculation is required run the error script
+    if run_errors:
+        try:
+            execfile(error_script, globals())  # Pass in globals() to load the script's contents to the global dict
+            errors = np.zeros(max_it)
+        except Exception:
+            # If it fails, turn off error calculation
+            print('-> Error script threw an error')
+            print(traceback.format_exc())
+            run_errors = False
+    # Iterate
+    for i in np.arange(0, max_it):
+        # Feedback message
+        print('-> Iteration ' + str(i + 1) + ' of ' + str(max_it))
+        # Calculate the stresses
+        print('--> Calculating stresses')
+        mesh_data = define_stresses(job_builder.mesh_data, stress_script)
+        if mesh_data is None:
+            return None, None
+        # Generate the job
+        print('--> Creating job ' + str(i + 1) + ' of ' + str(max_it))
+        job = job_builder.create_job(i + 1, 1)
+        # Run the job
+        print('--> Running job ' + str(i + 1) + ' of ' + str(max_it))
+        job.submit()
+        job.waitForCompletion()
+        # open the ODB
+        odb = abaqus.session.openOdb(job.name + ".odb", readOnly=True)
+        # Calculate the errors
+        if run_errors:
+            print('--> Calculating error for job ' + str(i + 1) + ' of ' + str(max_it))
+            # Calculate the error (method will be available from the error script)
+            try:
+                errors[i] = calculate_error(abaqus.session, odb)
+                print('---> Error = ' + str(errors[i]))
+                if errors[i] <= max_err:
+                    print '---> Error criterion reached, stopping'
+                    break
+            except Exception:
+                # If an error script fails, abort
+                print('---> Error script threw an error during calculation')
+                print(traceback.format_exc())
+        # Update stresses from odb
+        print('--> Updating stresses from odb')
+        deviations[i] = job_builder.update_stress_from_odb(odb)
+        print('---> Deviation = ' + str(deviations[i]))
+        if deviations[i] < max_dev:
+            print('---> Stress deviation criterion reached, stopping')
+            break
+    # Return the deviations and the errors
+    return deviations, errors
 
 
 # Writes stress scales and errors to file
@@ -476,6 +521,32 @@ def output_scales_and_error(stress_scales, errors):
         # Write to file
         f = open('stress_input_errors.txt', 'w')
         f.write(line_1 + '\n' + line_2)
+        f.close()
+        print('--> Scales and errors written to \"stress_input_errors.txt\"')
+
+
+# Writes stress deviations and errors to file
+def output_deviation_and_error(deviation, errors):
+    if deviation is not None:
+        # Print to console
+        print('--> Stress deviation:')
+        print(deviation)
+        if errors is not None:
+            print('--> Errors:')
+            print(errors)
+        # Compile data to write to file
+        line_1 = 'Deviations'
+        line_2 = 'Errors'
+        for i in np.arange(0, len(deviation)):
+            line_1 = line_1 + ', ' + str(deviation[i])
+            if errors is not None:
+                line_2 = line_2 + ', ' + str(errors[i])
+        # Write to file
+        f = open('stress_input_errors.txt', 'w')
+        if errors is None:
+            f.write(line_1)
+        else:
+            f.write(line_1 + '\n' + line_2)
         f.close()
         print('--> Scales and errors written to \"stress_input_errors.txt\"')
 

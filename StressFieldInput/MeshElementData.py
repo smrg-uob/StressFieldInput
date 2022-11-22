@@ -13,7 +13,7 @@ class MeshElementData(StressSetDefinition):
         self.x = x
         self.y = y
         self.z = z
-        self.stress = None
+        self.stress = [0, 0, 0, 0, 0, 0]
 
     def get_label(self):
         return self.label
