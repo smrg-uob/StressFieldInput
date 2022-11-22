@@ -160,6 +160,8 @@ def run_common_checks(default_job, stress_script):
     if not check_stress_script(stress_script):
         print('-> Stress script invalid')
         return False
+    # Return True as all checks have passed
+    return True
 
 
 # Method to check if the stress script has been properly defined
@@ -185,8 +187,8 @@ def check_stress_script(stress_script):
         return False
     # Check the method arguments
     import inspect
-    args = inspect.getargspec(func)
-    if len(args) != 5:
+    arg_spec = inspect.getargspec(func)
+    if len(arg_spec.args) != 5:
         print('--> Invalid arguments for "calculate_stress"; should have precisely 5:'
               ' "part", "x", "y", "z", and "prev_stress".')
     return True
