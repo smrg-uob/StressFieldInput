@@ -514,23 +514,28 @@ def run_subst_logic(job_builder, max_it, max_dev, max_err, stress_script, error_
 
 # Writes stress scales and errors to file
 def output_scales_and_error(stress_scales, errors):
-    if stress_scales is not None and errors is not None:
+    if stress_scales is not None:
         # Print to console
         print('--> Stress scales:')
         print(stress_scales)
-        print('--> Errors:')
-        print(errors)
+        if errors is not None:
+            print('--> Errors:')
+            print(errors)
         # Compile data to write to file
         line_1 = 'Stress scale'
         line_2 = 'Errors'
         for i in np.arange(0, len(stress_scales)):
             line_1 = line_1 + ', ' + str(stress_scales[i])
-            line_2 = line_2 + ', ' + str(errors[i])
+            if errors is not None:
+                line_2 = line_2 + ', ' + str(errors[i])
         # Write to file
         f = open('stress_input_errors.txt', 'w')
-        f.write(line_1 + '\n' + line_2)
+        if errors is not None:
+            f.write(line_1 + '\n' + line_2)
+        else:
+            f.write(line_1)
         f.close()
-        print('--> Scales and errors written to \"stress_input_errors.txt\"')
+        print('--> Scales and errors written to \"stress_input_scales.txt\"')
 
 
 # Writes stress deviations and errors to file
@@ -556,7 +561,7 @@ def output_deviation_and_error(deviation, errors):
         else:
             f.write(line_1 + '\n' + line_2)
         f.close()
-        print('--> Scales and errors written to \"stress_input_errors.txt\"')
+        print('--> Scales and errors written to \"stress_input_deviation.txt\"')
 
 
 # Utility method to inspect an object and print its attributes and methods to the console
