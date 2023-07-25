@@ -1,4 +1,6 @@
 # StressFieldInput
+[![DOI](https://zenodo.org/badge/563796887.svg)](https://zenodo.org/badge/latestdoi/563796887)
+
 A plugin for Abaqus CAE 2018 to apply arbitrary stress fields more easily
 
 The latest version can be downloaded from the [Releases](https://github.com/smrg-uob/StressFieldInput/releases).
