@@ -1,2 +1,2 @@
-slope_x = 15
-slope_y = -10
+amp_x = 15
+amp_y = -10
